@@ -50,6 +50,14 @@
   build с адреса на новото репо → `git init`/commit → `gh repo create` (или push към
   съществуващо) → описание + topics + Issues → таг `v<версия>` → проверка. Без
   `-Execute` е dry run и не качва нищо; не прави force push и не трие от GitHub.
+- **Интеграцията е публикувана** — <https://github.com/PasevSU/hapi-enterprise-integration>
+  (public, `main`, topics `home-assistant`/`hacs`/`integration`, Issues включени).
+  Release `v0.61.3` е създаден автоматично от `release.yml`; `Validate`
+  (hassfest + HACS action) тече при всеки push.
+- **`git` върху мрежов диск** — `H:` е SMB дял и `git` там блокира дори на
+  `git rev-parse`, а `git init` след build пада с код 1. Затова генераторът вече
+  **не пипа `.git`**, а публикацията минава през локално копие във `%TEMP%`
+  (`-InPlace` за работа направо в `release/haoss`).
 
 - **`scripts/sync-local-addon.ps1`** — копира add-on-а в `/addons/hapi_enterprise` и
   интеграцията в `/config/custom_components/hapi_enterprise` (`robocopy /MIR`), с
@@ -67,6 +75,24 @@
 - **Забележка** — Home Assistant зарежда custom интеграция само от папка, чието име
   съвпада с `domain` в `manifest.json`; копие в `custom_components/hAPI Enterptice`
   (пълно копие на репото) се игнорира тихо от HA.
+## 0.61.4 — 2026-10-21
+
+Първите три грешки на hassfest, хванати веднага след като интеграцията стана публична.
+
+- **`manifest.json`: ключовете са подредени според изискването на hassfest** — `domain`,
+  `name`, после по азбучен ред. Досега `version` стоеше веднага след `name`, а
+  `after_dependencies`/`config_flow`/`dependencies` не бяха сортирани.
+- **`CONFIG_SCHEMA` за YAML режима** — интеграцията дефинира `async_setup`, затова Home
+  Assistant изисква схема; без нея `hapi_enterprise: backend_url: ...` се отчита като
+  невалидна конфигурация (hassfest: конфигурационна схема липсва). Схемата приема
+  `backend_url` като низ и позволява допълнителни ключове, за да не чупи стари конфигурации.
+- **Без HTML в преводите** — `(http://<addon-hostname>:8098)` се приемаше за HTML таг и
+  hassfest отхвърляше `strings.json` и `translations/en.json`. Заменено с
+  `(напр. http://hapi_enterprise:8098)` в en и bg.
+- **Първо публикуване** — <https://github.com/PasevSU/hapi-enterprise-integration>;
+  `v0.61.3` остава в историята като първия опит, `v0.61.4` е изданието, което минава
+  `Validate` (hassfest + HACS action).
+
 ## 0.61.3 — 2026-10-21
 
 Ingress идентичност по реалните HA заглавки, peer изолация и проект-wide одит за съвместимост.

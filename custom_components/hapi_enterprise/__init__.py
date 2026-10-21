@@ -25,9 +25,11 @@ from datetime import timedelta
 from pathlib import Path
 from urllib.parse import quote
 from aiohttp import ClientError, web
+import voluptuous as vol
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
@@ -41,6 +43,19 @@ from .const import (
 from .coordinator import PortalEnterpriseCoordinator
 
 _LOGGER = logging.getLogger(__name__)
+
+# YAML mode is optional (`hapi_enterprise: backend_url: ...`); the UI config flow works
+# without it. The integration defines `async_setup`, so Home Assistant (hassfest) requires
+# a CONFIG_SCHEMA — without one the YAML key would be reported as invalid.
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: vol.Schema(
+            {vol.Optional(CONF_BACKEND_URL): cv.string},
+            extra=vol.ALLOW_EXTRA,
+        )
+    },
+    extra=vol.ALLOW_EXTRA,
+)
 
 _ALLOWED = re.compile(
     r"^p/([a-z0-9][a-z0-9-]{0,62})"

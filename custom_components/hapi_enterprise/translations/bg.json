@@ -5,7 +5,7 @@
         "title": "hAPI Enterprise",
         "description": "Свържи се към административното API на add-on-а hAPI Enterprise, за да се показват сензори за телеметрията.",
         "data": {
-          "backend_url": "Адрес на административното API (http://<адрес-на-add-on-а>:8098)",
+          "backend_url": "Адрес на административното API (напр. http://hapi_enterprise:8098)",
           "token": "Административен токен",
           "scan_interval": "Интервал на обновяване (секунди)"
         }
@@ -30,7 +30,7 @@
         "title": "Настройки на hAPI Enterprise",
         "description": "Обнови настройките за връзка. Остави токена празен, за да запазиш текущия.",
         "data": {
-          "backend_url": "Адрес на административното API (http://<адрес-на-add-on-а>:8098)",
+          "backend_url": "Адрес на административното API (напр. http://hapi_enterprise:8098)",
           "token": "Административен токен",
           "scan_interval": "Интервал на обновяване (секунди)"
         }

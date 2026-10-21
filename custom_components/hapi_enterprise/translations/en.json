@@ -5,7 +5,7 @@
         "title": "hAPI Enterprise",
         "description": "Connect to the hAPI Enterprise add-on admin API to expose telemetry sensors.",
         "data": {
-          "backend_url": "Admin API URL (http://<addon-hostname>:8098)",
+          "backend_url": "Admin API URL (e.g. http://hapi_enterprise:8098)",
           "token": "Admin token",
           "scan_interval": "Update interval (seconds)"
         }
@@ -30,7 +30,7 @@
         "title": "hAPI Enterprise options",
         "description": "Update the admin API connection settings. Leave the token empty to keep the current value.",
         "data": {
-          "backend_url": "Admin API URL (http://<addon-hostname>:8098)",
+          "backend_url": "Admin API URL (e.g. http://hapi_enterprise:8098)",
           "token": "Admin token",
           "scan_interval": "Update interval (seconds)"
         }
