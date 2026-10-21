@@ -1,0 +1,115 @@
+{
+  "id": "single",
+  "title": "ChronoSeal SINGLE report",
+  "version": 1,
+  "report_type": "single",
+  "input_scope": "single_file",
+  "meta": {
+    "title": "SHA-256 Hash Report",
+    "report_type_label": "HASHREPORT_TYP_SINGLE"
+  },
+  "sections": [
+    {
+      "key": "identity",
+      "block": "kv",
+      "title": null,
+      "from": "identity"
+    },
+    {
+      "key": "system",
+      "block": "kv",
+      "title": "System Information",
+      "from": "system"
+    },
+    {
+      "key": "hashes",
+      "block": "hash_table",
+      "title": "File Hashes",
+      "from": "hashes"
+    },
+    {
+      "key": "volume",
+      "block": "kv",
+      "title": "Volume",
+      "from": "volume",
+      "optional": true
+    },
+    {
+      "key": "user",
+      "block": "kv",
+      "title": "User Information",
+      "from": "user"
+    },
+    {
+      "key": "file",
+      "block": "kv",
+      "title": "File Information",
+      "from": "file"
+    },
+    {
+      "key": "timestamp",
+      "block": "table",
+      "title": "Cryptographic Timestamp",
+      "from": "timestamp",
+      "columns": [
+        {
+          "title": "Property",
+          "w": 3
+        },
+        {
+          "title": "Value",
+          "w": 7
+        }
+      ]
+    },
+    {
+      "key": "start",
+      "block": "kv",
+      "title": "Cryptographic Timestamp START",
+      "from": "start"
+    },
+    {
+      "key": "generator",
+      "block": "slot",
+      "between": [
+        "start",
+        "stop"
+      ]
+    },
+    {
+      "key": "stop",
+      "block": "kv",
+      "title": "Cryptographic Timestamp STOP",
+      "from": "stop"
+    },
+    {
+      "key": "text",
+      "block": "table",
+      "title": "File Text Hashes",
+      "from": "text_pages",
+      "optional": true,
+      "columns": [
+        {
+          "title": "Page",
+          "w": 1,
+          "align": "center"
+        },
+        {
+          "title": "SHA-256 of page text",
+          "w": 9,
+          "mono": true
+        }
+      ]
+    },
+    {
+      "key": "legal",
+      "block": "note",
+      "from": "legal"
+    },
+    {
+      "key": "checksums",
+      "block": "note",
+      "from": "checksums_note"
+    }
+  ]
+}

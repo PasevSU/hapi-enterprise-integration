@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "kind": "hash_report_manifests",
+  "note": "Оформление на отчетите. Не съдържа TSA токени, сертификати или подписи — те се появяват само при реално изпълнение.",
+  "hash_rule": "sha256 върху текста на файла с CRLF → LF; опреснява се при всяка промяна на манифест",
+  "slot": {
+    "key": "generator",
+    "between": [
+      "start",
+      "stop"
+    ],
+    "rule": "Генерираното съдържание влиза само между Cryptographic Timestamp START и STOP."
+  },
+  "manifests": [
+    {
+      "file": "single.json",
+      "id": "single",
+      "report_type": "single",
+      "report_type_label": "HASHREPORT_TYP_SINGLE",
+      "input_scope": "single_file",
+      "covers": "един файл; PDF получава и хешове на текста по страници",
+      "sha256": "2010f45fa558e9c682b9b9372fef8bca338b0b08294c301f57175200535a5920"
+    },
+    {
+      "file": "combo.json",
+      "id": "combo",
+      "report_type": "combo",
+      "report_type_label": "HASHREPORT_TYP_COMBO",
+      "input_scope": "current_folder",
+      "covers": "една папка, само файловете в нея",
+      "sha256": "f593ff6c1cbb209a0036cf03d76fee7255448ca663a3dbf347e72b6fb634829f"
+    },
+    {
+      "file": "combo_all.json",
+      "id": "combo_all",
+      "report_type": "combo",
+      "report_type_label": "HASHREPORT_TYP_COMBO_ALL",
+      "input_scope": "recursive_folder",
+      "covers": "една папка и всички подпапки (рекурсията е изрична)",
+      "sha256": "b7a9637136e0cc214ff3cd0fd9ec8f8f75d0500ed6d82b27d078ab4ca45ba3a0"
+    },
+    {
+      "file": "volume.json",
+      "id": "volume",
+      "report_type": "volume",
+      "report_type_label": "HASHREPORT_TYP_VOLUME",
+      "input_scope": "recursive_folder",
+      "covers": "една папка с произход на тома (volume provenance)",
+      "sha256": "f643fce5ddac288c568635ffd736b21befe026c81586a124216b6edff35c68fb"
+    }
+  ]
+}

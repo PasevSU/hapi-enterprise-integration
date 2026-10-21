@@ -1,0 +1,115 @@
+{
+  "id": "combo",
+  "title": "ChronoSeal COMBO report",
+  "version": 1,
+  "report_type": "combo",
+  "input_scope": "current_folder",
+  "meta": {
+    "title": "SHA-256 Hash Report",
+    "report_type_label": "HASHREPORT_TYP_COMBO"
+  },
+  "sections": [
+    {
+      "key": "identity",
+      "block": "kv",
+      "title": null,
+      "from": "identity"
+    },
+    {
+      "key": "system",
+      "block": "kv",
+      "title": "System Information",
+      "from": "system"
+    },
+    {
+      "key": "volume",
+      "block": "kv",
+      "title": "Volume",
+      "from": "volume",
+      "optional": true
+    },
+    {
+      "key": "user",
+      "block": "kv",
+      "title": "User Information",
+      "from": "user"
+    },
+    {
+      "key": "files",
+      "block": "table",
+      "title": "Evidence Package Files Information",
+      "from": "files",
+      "columns": [
+        {
+          "title": "#",
+          "w": 1,
+          "align": "center"
+        },
+        {
+          "title": "File",
+          "w": 6
+        },
+        {
+          "title": "Type",
+          "w": 2
+        },
+        {
+          "title": "Size (KB)",
+          "w": 2,
+          "align": "right"
+        },
+        {
+          "title": "SHA-256",
+          "w": 8,
+          "mono": true
+        }
+      ]
+    },
+    {
+      "key": "timestamp",
+      "block": "table",
+      "title": "Cryptographic Timestamp",
+      "from": "timestamp",
+      "columns": [
+        {
+          "title": "Property",
+          "w": 3
+        },
+        {
+          "title": "Value",
+          "w": 7
+        }
+      ]
+    },
+    {
+      "key": "start",
+      "block": "kv",
+      "title": "Cryptographic Timestamp START",
+      "from": "start"
+    },
+    {
+      "key": "generator",
+      "block": "slot",
+      "between": [
+        "start",
+        "stop"
+      ]
+    },
+    {
+      "key": "stop",
+      "block": "kv",
+      "title": "Cryptographic Timestamp STOP",
+      "from": "stop"
+    },
+    {
+      "key": "legal",
+      "block": "note",
+      "from": "legal"
+    },
+    {
+      "key": "checksums",
+      "block": "note",
+      "from": "checksums_note"
+    }
+  ]
+}
