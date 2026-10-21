@@ -15,8 +15,15 @@ The integration is the Home-Assistant side of the add-on:
 - **Public gateway** — the read-only public portal surface on Home Assistant's port, so external
   visitors never need a second port or a second login.
 
-> The add-on itself is installed from the add-on repository
-> (https://github.com/PasevSU/hAPI), not from HACS. HACS manages this integration only.
+> **Това е хранилище за HACS интеграция — не е app (add-on) хранилище.**
+> Ако го добавиш в **Settings → Add-ons → Repositories**, Home Assistant отговаря
+> *"is not a valid app repository"*. Тук му е мястото само в
+> **HACS → Integrations → Custom repositories**.
+>
+> | Какво инсталираш | Кое хранилище | Къде се добавя |
+> | --- | --- | --- |
+> | Add-on (сървъра) | https://github.com/PasevSU/hAPI | Settings → Add-ons → Repositories |
+> | Тази интеграция | това хранилище | HACS → Integrations → Custom repositories |
 
 Release notes: [CHANGELOG.md](CHANGELOG.md).
 
