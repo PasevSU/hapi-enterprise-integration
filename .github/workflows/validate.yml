@@ -23,8 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Задай topics в GitHub (home-assistant, hacs, integration) и махни ignore-а.
+      # Topics (home-assistant, hacs, integration), описание и Issues са зададени в
+      # GitHub, затова HACS action минава без изключение — изискване за списъка по подразбиране.
       - uses: hacs/action@main
         with:
           category: integration
-          ignore: topics
