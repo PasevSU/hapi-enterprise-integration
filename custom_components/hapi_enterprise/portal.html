@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="bg">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="referrer" content="no-referrer" />
+  <meta name="color-scheme" content="light dark" />
+  <title>Портал за документи</title>
+  <link rel="stylesheet" href="/api/hapi_enterprise/assets/portal.css" />
+</head>
+<body>
+  <a class="skip" href="#files" id="skip">Към файловете</a>
+
+  <header class="hero">
+    <div class="wrap">
+      <p class="eyebrow">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="visibility">Портал за документи</span>
+      </p>
+      <h1 id="title">Зареждане…</h1>
+      <p id="description" class="lead" hidden></p>
+      <ul id="badges" class="badges" aria-label="Категории"></ul>
+      <p id="contact" class="contact" hidden></p>
+      <div class="hero-actions">
+        <button type="button" id="copy-link" class="btn btn-ghost">Копирай адреса</button>
+        <a id="api-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener noreferrer">API</a>
+        <a id="manifest-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener noreferrer">Манифест</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" id="main">
+    <section class="panel" aria-labelledby="files-title">
+      <div class="panel-head">
+        <h2 id="files-title">Файлове</h2>
+        <span id="count" class="count" aria-live="polite"></span>
+      </div>
+      <div class="toolbar" id="toolbar">
+        <label class="search">
+          <span class="sr-only" id="q-label">Търси по име, тема или категория</span>
+          <input id="q" type="search" placeholder="Търси по име, тема или категория" autocomplete="off" />
+        </label>
+      </div>
+      <p id="status" class="status" role="status" aria-live="polite">Зареждане…</p>
+      <ul id="files" class="files"></ul>
+      <p id="empty" class="empty" hidden>Няма достъпни файлове за показване.</p>
+      <p id="more" class="more" hidden></p>
+    </section>
+
+    <section class="panel qr-panel" aria-labelledby="qr-title">
+      <h2 id="qr-title">QR код на портала</h2>
+      <div class="qr-box">
+        <img id="qr" alt="QR код към този портал" width="188" height="188" />
+        <div class="qr-text">
+          <p id="qr-hint">Сканирай кода, за да отвориш портала на друго устройство.</p>
+          <p class="mono" id="portal-url"></p>
+          <p class="hint" id="qr-note">Всеки файл носи SHA-256 отпечатък — сверявай го след изтегляне.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap">
+      <p id="foot-note">Порталът се обслужва от <strong>hAPI Enterprise</strong> · съдържанието е собственост на издателя.</p>
+    </div>
+  </footer>
+
+  <script src="/api/hapi_enterprise/assets/portal.js" defer></script>
+</body>
+</html>
