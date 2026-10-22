@@ -9,13 +9,13 @@
   "dependencies": [
     "http"
   ],
-  "documentation": "https://github.com/PasevSU/hapi-enterprise-integration#readme",
+  "documentation": "https://github.com/PasevSU/hAPI#readme",
   "integration_type": "hub",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/PasevSU/hapi-enterprise-integration/issues",
+  "issue_tracker": "https://github.com/PasevSU/hAPI/issues",
   "loggers": [
     "hapi_enterprise"
   ],
   "requirements": [],
-  "version": "0.69.19"
+  "version": "0.69.21"
 }

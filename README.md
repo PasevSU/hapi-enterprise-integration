@@ -1,7 +1,7 @@
 # hAPI Enterprise — Home Assistant integration
 
-[![Version](https://img.shields.io/badge/version-0.69.19-ff00d8.svg)](https://github.com/PasevSU/hapi-enterprise-integration)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-%3E%3D2024.6.0-41BDF5?logo=homeassistant)](https://github.com/PasevSU/hapi-enterprise-integration)
+[![Version](https://img.shields.io/badge/version-0.69.21-ff00d8.svg)](https://github.com/PasevSU/hAPI)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-%3E%3D2024.6.0-41BDF5?logo=homeassistant)](https://github.com/PasevSU/hAPI)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
 Home Assistant integration for **hAPI Enterprise** — the document vault add-on with verifiable
@@ -22,7 +22,7 @@ The integration is the Home-Assistant side of the add-on:
 >
 > | Какво инсталираш | Кое хранилище | Къде се добавя |
 > | --- | --- | --- |
-> | Add-on (сървъра) | https://github.com/PasevSU/hapi-enterprise-integration | Settings → Add-ons → Repositories |
+> | Add-on (сървъра) | https://github.com/PasevSU/hAPI | Settings → Add-ons → Repositories |
 > | Тази интеграция | това хранилище | HACS → Integrations → Custom repositories |
 
 Release notes: [CHANGELOG.md](CHANGELOG.md).
@@ -42,7 +42,7 @@ Release notes: [CHANGELOG.md](CHANGELOG.md).
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=PasevSU&repository=hAPI&category=integration)
 
 1. HACS → **Integrations** → ⋮ → **Custom repositories**.
-2. Add `https://github.com/PasevSU/hapi-enterprise-integration` with category **Integration**.
+2. Add `https://github.com/PasevSU/hAPI` with category **Integration**.
 3. Install **hAPI Enterprise** and restart Home Assistant.
 4. **Settings → Devices & services → Add integration → hAPI Enterprise**.
 
