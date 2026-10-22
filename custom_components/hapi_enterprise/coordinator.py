@@ -22,6 +22,13 @@ _TELEMETRY_KEYS = {
     "telemetry_bytes": "telemetryBytes",
     "visits": "visits",
     "downloads": "downloads",
+    # Сензори за комуникацията (виж visitor-intel.js): кой влиза, какво тегли, откъде.
+    "unique_visitors": "uniqueVisitors",
+    "visitors_new_24h": "visitorsNew24h",
+    "download_visitors": "downloadVisitors",
+    "denied_total": "deniedTotal",
+    "admin_logins": "adminLogins",
+    "countries_known": "countriesKnown",
 }
 
 

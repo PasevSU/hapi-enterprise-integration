@@ -1,6 +1,6 @@
 # hAPI Enterprise — Home Assistant integration
 
-[![Version](https://img.shields.io/badge/version-0.69.19-ff00d8.svg)](https://github.com/PasevSU/hapi-enterprise-integration)
+[![Version](https://img.shields.io/badge/version-0.69.26-ff00d8.svg)](https://github.com/PasevSU/hapi-enterprise-integration)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-%3E%3D2024.6.0-41BDF5?logo=homeassistant)](https://github.com/PasevSU/hapi-enterprise-integration)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 

@@ -75,6 +75,37 @@ _TOTAL_SENSORS: tuple[PortalSensorEntityDescription, ...] = (
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
     ),
+    # Комуникация: кой влиза, какво тегли, откъде (виж `visitor-intel.js`).
+    PortalSensorEntityDescription(
+        key="unique_visitors",
+        translation_key="unique_visitors",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    PortalSensorEntityDescription(
+        key="visitors_new_24h",
+        translation_key="visitors_new_24h",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    PortalSensorEntityDescription(
+        key="download_visitors",
+        translation_key="download_visitors",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
+    PortalSensorEntityDescription(
+        key="denied_total",
+        translation_key="denied_total",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    PortalSensorEntityDescription(
+        key="admin_logins",
+        translation_key="admin_logins",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+    ),
+    PortalSensorEntityDescription(
+        key="countries_known",
+        translation_key="countries_known",
+        state_class=SensorStateClass.MEASUREMENT,
+    ),
 )
 
 SENSOR_KEYS = tuple(description.key for description in _TOTAL_SENSORS)

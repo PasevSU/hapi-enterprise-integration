@@ -47,13 +47,45 @@
   },
   "entity": {
     "sensor": {
-      "visits": { "name": "Посещения" },
-      "downloads": { "name": "Изтегляния" },
-      "files": { "name": "Файлове" },
-      "portal_count": { "name": "Портали" },
-      "file_bytes": { "name": "Място за файлове" },
-      "database_bytes": { "name": "Размер на базата" },
-      "telemetry_bytes": { "name": "Размер на телеметрията" }
+      "visits": {
+        "name": "Посещения"
+      },
+      "downloads": {
+        "name": "Изтегляния"
+      },
+      "files": {
+        "name": "Файлове"
+      },
+      "portal_count": {
+        "name": "Портали"
+      },
+      "file_bytes": {
+        "name": "Място за файлове"
+      },
+      "database_bytes": {
+        "name": "Размер на базата"
+      },
+      "telemetry_bytes": {
+        "name": "Размер на телеметрията"
+      },
+      "unique_visitors": {
+        "name": "Уникални посетители"
+      },
+      "visitors_new_24h": {
+        "name": "Нови посетители (24 ч)"
+      },
+      "download_visitors": {
+        "name": "Посетители, които теглят"
+      },
+      "denied_total": {
+        "name": "Отказани достъпи"
+      },
+      "admin_logins": {
+        "name": "Администраторски влизания"
+      },
+      "countries_known": {
+        "name": "Държави на посетителите"
+      }
     }
   }
 }

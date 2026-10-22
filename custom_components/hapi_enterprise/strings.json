@@ -47,13 +47,45 @@
   },
   "entity": {
     "sensor": {
-      "visits": { "name": "Visits" },
-      "downloads": { "name": "Downloads" },
-      "files": { "name": "Files" },
-      "portal_count": { "name": "Portals" },
-      "file_bytes": { "name": "File storage" },
-      "database_bytes": { "name": "Database size" },
-      "telemetry_bytes": { "name": "Telemetry size" }
+      "visits": {
+        "name": "Visits"
+      },
+      "downloads": {
+        "name": "Downloads"
+      },
+      "files": {
+        "name": "Files"
+      },
+      "portal_count": {
+        "name": "Portals"
+      },
+      "file_bytes": {
+        "name": "File storage"
+      },
+      "database_bytes": {
+        "name": "Database size"
+      },
+      "telemetry_bytes": {
+        "name": "Telemetry size"
+      },
+      "unique_visitors": {
+        "name": "Unique visitors"
+      },
+      "visitors_new_24h": {
+        "name": "New visitors (24 h)"
+      },
+      "download_visitors": {
+        "name": "Visitors who downloaded"
+      },
+      "denied_total": {
+        "name": "Denied accesses"
+      },
+      "admin_logins": {
+        "name": "Admin logins"
+      },
+      "countries_known": {
+        "name": "Visitor countries"
+      }
     }
   }
 }
