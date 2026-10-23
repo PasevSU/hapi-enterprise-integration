@@ -4,6 +4,42 @@
 (`custom_components/hapi_enterprise`). Версията има един източник на истина —
 `hapi_enterprise/config.yaml`; `manifest.json` трябва да носи същата стойност.
 
+## 0.69.39
+
+`server.js` спира да бъде монолит: HTTP слоят се разделя на компоненти.
+
+- Отчетите и генераторът вече са отделни файлове: `hapi_enterprise/routes/reports.js`
+  (`/admin/api/v2/reports/{render,package,sign}`, `rfc3161` + `verify`) и
+  `hapi_enterprise/routes/generator.js` (`/admin/api/generator/templates`). Кодът е
+  преместен 1:1 — нито един маршрут не е променен.
+- Един договор за всички: `create(deps)` → `handle({ req, res, url, parts, method })`,
+  който връща `true` (заявката е негова и е приключена) или `false` (следващият я поема).
+  Зависимостите се подават изрично — компонентът не пипа база, портали или файлове,
+  ако не са му дадени.
+- `server.js` падна от 2971 на 2727 реда; таванът се пази от `tests/server-structure.cjs`
+  и **само се намалява** — нов маршрут отива в компонент.
+- Тестът хваща и втората класическа грешка при изнасяне: `require('./…')` от `routes/`
+  гледа в `routes/`, а не в `hapi_enterprise/` (точно това даде 500 при отчетите,
+  докато не се поправи на `../`).
+- `Dockerfile` копира `routes/`; `hapi_enterprise/routes/README.md` описва договора и
+  следващите кандидати (sensors, core, ui-assets, portals, settings).
+
+## 0.69.38
+
+Панелът работи и когато Home Assistant отвори линка си от вида `/app/<slug>`.
+
+- Линкът, който HA дава към add-on панела (`https://<ha>:8123/app/<id>_hapi_enterprise`),
+  се отрязва от сървъра по същия начин, по който панелът го брои за ingress префикс
+  (`ui/api-base.js`). Преди това заявка като `/app/<slug>/admin/api/…` пристигаше цяла и
+  връщаше 404 — панелът изглеждаше зареден, но без данни.
+- Отрязва се САМО когато отдолу стои маршрут на add-on-а (`/admin`, `/ui`, `/generator`,
+  `/hapi_enterprise`, `/health`, `/api`, `/site`) или коренът; непознат път под префикса си
+  остава 404, за да не се маскира счупен адрес.
+- Коренът на `/app/<slug>` пренасочва към `<префикс>/ui/`, както и коренът на ingress-а.
+- Поддържат се и `/hapi/<token>` и `/hassio/ingress/<token>` (reverse proxy и по-стари
+  инсталации). Тестът `tests/ingress-api-base.cjs` покрива трите форми, пренасочването и
+  отказа за чужд път.
+
 ## 0.69.37
 
 Обновяването вече се вижда и в Home Assistant, а не само в GitHub.
