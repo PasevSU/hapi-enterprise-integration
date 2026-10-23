@@ -16,6 +16,9 @@ _LOGGER = logging.getLogger(__name__)
 
 # The add-on speaks camelCase in `/admin/api/sensors`; the sensors use snake_case.
 _TELEMETRY_KEYS = {
+    # Версията на add-on-а идва от самия него — така HA показва коя версия реално
+    # работи, а не коя е била инсталирана някога.
+    "version": "version",
     "files": "files",
     "file_bytes": "fileBytes",
     "database_bytes": "databaseBytes",

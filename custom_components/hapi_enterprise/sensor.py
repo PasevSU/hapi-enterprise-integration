@@ -12,9 +12,10 @@ from homeassistant.components.sensor import (
     SensorStateClass,
 )
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfInformation
+from homeassistant.const import EntityCategory, UnitOfInformation
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN
 from .coordinator import PortalEnterpriseCoordinator
@@ -108,6 +109,27 @@ _TOTAL_SENSORS: tuple[PortalSensorEntityDescription, ...] = (
     ),
 )
 
+# Версия и синхрон: текст/enum, не числа — затова са в отделен списък със свой клас.
+# Смисълът им е точно това, което липсваше: в Home Assistant да се вижда КОЯ версия
+# работи add-on-ът и дали съвпада с версията на интеграцията (иначе едната половина
+# може да е обновена, а другата не и това не се вижда отникъде).
+_VERSION_SENSORS: tuple[PortalSensorEntityDescription, ...] = (
+    PortalSensorEntityDescription(
+        key="version",
+        translation_key="version",
+        icon="mdi:tag-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    PortalSensorEntityDescription(
+        key="sync",
+        translation_key="sync",
+        device_class=SensorDeviceClass.ENUM,
+        options=["ok", "mismatch", "unknown"],
+        icon="mdi:sync",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+)
+
 SENSOR_KEYS = tuple(description.key for description in _TOTAL_SENSORS)
 
 
@@ -128,9 +150,15 @@ async def async_setup_entry(
 ) -> None:
     """Set up the sensor platform from a config entry."""
     coordinator: PortalEnterpriseCoordinator = hass.data[DOMAIN][entry.entry_id]
+    integration = await async_get_integration(hass, DOMAIN)
+    integration_version = getattr(integration, "version", None)
     async_add_entities(
         PortalEnterpriseTotalSensor(coordinator, entry, description)
         for description in _TOTAL_SENSORS
+    )
+    async_add_entities(
+        PortalStatusSensor(coordinator, entry, description, integration_version)
+        for description in _VERSION_SENSORS
     )
 
 
@@ -168,6 +196,82 @@ class PortalEnterpriseTotalSensor(SensorEntity):
         if self.coordinator.data is None:
             return None
         return _to_int(self.coordinator.data.get(self.entity_description.key))
+
+    @property
+    def should_poll(self) -> bool:
+        """The coordinator handles polling."""
+        return False
+
+    async def async_added_to_hass(self) -> None:
+        """Subscribe to coordinator updates."""
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self._handle_coordinator_update)
+        )
+        await super().async_added_to_hass()
+        self._handle_coordinator_update()
+
+    def _handle_coordinator_update(self) -> None:
+        """Refresh the entity state on coordinator updates."""
+        self.async_write_ha_state()
+
+
+class PortalStatusSensor(SensorEntity):
+    """Version of the running add-on and whether it matches the integration."""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: PortalEnterpriseCoordinator,
+        entry: ConfigEntry,
+        description: PortalSensorEntityDescription,
+        integration_version: str | None,
+    ) -> None:
+        """Initialize the version/status sensor."""
+        self.entity_description = description
+        self.coordinator = coordinator
+        self.integration_version = integration_version
+        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry.entry_id)},
+            "name": entry.title,
+            "manufacturer": "hAPI",
+            "model": "Enterprise Portal",
+            "sw_version": integration_version,
+        }
+
+    @property
+    def available(self) -> bool:
+        """Whether data is available for this sensor."""
+        return self.coordinator.last_update_success and self.coordinator.data is not None
+
+    @property
+    def addon_version(self) -> str | None:
+        """Version reported by the running add-on, not the installed one."""
+        data = self.coordinator.data or {}
+        value = data.get("version")
+        return str(value) if value else None
+
+    @property
+    def native_value(self) -> str | None:
+        """Add-on version, or the sync state (ok / mismatch / unknown)."""
+        if self.entity_description.key == "version":
+            return self.addon_version
+        addon = self.addon_version
+        if not addon or not self.integration_version:
+            # Липсва стойност: не се твърди „съвпада“. `unknown` е валидна опция.
+            return "unknown"
+        return "ok" if addon == str(self.integration_version) else "mismatch"
+
+    @property
+    def extra_state_attributes(self) -> dict | None:
+        """Both versions, so the reason for a mismatch is visible."""
+        if self.entity_description.key != "sync":
+            return None
+        return {
+            "addon_version": self.addon_version,
+            "integration_version": self.integration_version,
+        }
 
     @property
     def should_poll(self) -> bool:

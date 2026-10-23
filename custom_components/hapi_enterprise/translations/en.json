@@ -85,6 +85,17 @@
       },
       "countries_known": {
         "name": "Visitor countries"
+      },
+      "version": {
+        "name": "Add-on version"
+      },
+      "sync": {
+        "name": "Add-on and integration match",
+        "state": {
+          "ok": "Match",
+          "mismatch": "Mismatch",
+          "unknown": "Unknown"
+        }
       }
     }
   }
