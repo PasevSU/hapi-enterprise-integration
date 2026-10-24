@@ -5,7 +5,10 @@ from __future__ import annotations
 DOMAIN = "hapi_enterprise"
 NAME = "hAPI Enterprise"
 
-PLATFORMS = ["sensor"]
+# `sensor` носи числата и решението, `binary_sensor` — „има ли проблем сега“ (problem)
+# и „живо ли е API-то“ (connectivity). Двете платформи ползват ОБЩА снимка от
+# координатора, значи едно обновяване на 60 s стига за всички обекти.
+PLATFORMS = ["sensor", "binary_sensor"]
 
 CONF_BACKEND_URL = "backend_url"
 CONF_TOKEN = "token"
