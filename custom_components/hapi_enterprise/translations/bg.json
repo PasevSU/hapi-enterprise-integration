@@ -129,6 +129,18 @@
       },
       "cross_portal_denials": {
         "name": "Откази между портали"
+      },
+      "qr_active": {
+        "name": "Активни QR кодове"
+      },
+      "qr_blocked": {
+        "name": "Прекратени QR кодове"
+      },
+      "qr_archives": {
+        "name": "Физически архиви"
+      },
+      "locked_files": {
+        "name": "Заключени публикувани файлове"
       }
     },
     "binary_sensor": {

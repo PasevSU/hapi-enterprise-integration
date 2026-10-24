@@ -129,6 +129,18 @@
       },
       "cross_portal_denials": {
         "name": "Cross-portal denials"
+      },
+      "qr_active": {
+        "name": "Active QR codes"
+      },
+      "qr_blocked": {
+        "name": "Blocked QR codes"
+      },
+      "qr_archives": {
+        "name": "Physical archives"
+      },
+      "locked_files": {
+        "name": "Locked published files"
       }
     },
     "binary_sensor": {

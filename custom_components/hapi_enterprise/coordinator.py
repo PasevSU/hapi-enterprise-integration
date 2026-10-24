@@ -104,7 +104,31 @@ def _normalize(payload: dict) -> dict:
     out["generated_at"] = payload.get("generatedAt")
     out.update(_normalize_guidance(payload.get("guidance")))
     out.update(_normalize_security(payload.get("security")))
+    out.update(_normalize_qr(payload.get("qr")))
     return out
+
+
+def _normalize_qr(qr: object) -> dict:
+    """Flatten the add-on's `qr` block (QR revisions and physical archives).
+
+    Числата идват готови от add-on-а (`portal-qr.stats`) — интеграцията не брои
+    повторно, за да не се разминат панелът и Home Assistant.
+    """
+    if not isinstance(qr, dict):
+        return {
+            "qr_active": None,
+            "qr_blocked": None,
+            "qr_archives": None,
+            "locked_files": None,
+            "tree_max_depth": None,
+        }
+    return {
+        "qr_active": qr.get("active"),
+        "qr_blocked": qr.get("blocked"),
+        "qr_archives": qr.get("archives"),
+        "locked_files": qr.get("lockedFiles"),
+        "tree_max_depth": qr.get("maxDepth"),
+    }
 
 
 def _normalize_security(security: object) -> dict:

@@ -186,6 +186,39 @@ _SECURITY_SENSORS: tuple[PortalSensorEntityDescription, ...] = (
     ),
 )
 
+# QR ревизии, архиви и заключени публикувани файлове. Отговарят на въпроса „колко печата
+# има и колко от съдържанието е с ограничен достъп“ — за отчет и за проследимост.
+_QR_SENSORS: tuple[PortalSensorEntityDescription, ...] = (
+    PortalSensorEntityDescription(
+        key="qr_active",
+        translation_key="qr_active",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:qrcode",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    PortalSensorEntityDescription(
+        key="qr_blocked",
+        translation_key="qr_blocked",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:qrcode-remove",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    PortalSensorEntityDescription(
+        key="qr_archives",
+        translation_key="qr_archives",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:folder-zip-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    PortalSensorEntityDescription(
+        key="locked_files",
+        translation_key="locked_files",
+        state_class=SensorStateClass.MEASUREMENT,
+        icon="mdi:file-lock-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+)
+
 # Версия и синхрон: текст/enum, не числа — затова са в отделен списък със свой клас.
 # Смисълът им е точно това, което липсваше: в Home Assistant да се вижда КОЯ версия
 # работи add-on-ът и дали съвпада с версията на интеграцията (иначе едната половина
@@ -209,7 +242,7 @@ _VERSION_SENSORS: tuple[PortalSensorEntityDescription, ...] = (
 
 SENSOR_KEYS = tuple(
     description.key
-    for description in (*_TOTAL_SENSORS, *_GUIDANCE_SENSORS, *_SECURITY_SENSORS)
+    for description in (*_TOTAL_SENSORS, *_GUIDANCE_SENSORS, *_SECURITY_SENSORS, *_QR_SENSORS)
 )
 
 
@@ -261,6 +294,10 @@ async def async_setup_entry(
     async_add_entities(
         PortalSecuritySensor(coordinator, entry, description)
         for description in _SECURITY_SENSORS
+    )
+    async_add_entities(
+        PortalQrSensor(coordinator, entry, description)
+        for description in _QR_SENSORS
     )
 
 
@@ -471,6 +508,44 @@ class PortalGuidanceSensor(SensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Refresh the entity state on coordinator updates."""
         self.async_write_ha_state()
+
+class PortalQrSensor(SensorEntity):
+    """QR ревизии, физически архиви и заключени публикувани файлове.
+
+    Числата идват готови от add-on-а (`qr`, `portal-qr.stats`); тук не се брои повторно.
+    `None` остава `unknown` — липсващото измерване не е нула.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: PortalEnterpriseCoordinator,
+        entry: ConfigEntry,
+        description: PortalSensorEntityDescription,
+    ) -> None:
+        """Initialize the QR sensor."""
+        self.entity_description = description
+        self.coordinator = coordinator
+        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
+        self._attr_device_info = {
+            "identifiers": {(DOMAIN, entry.entry_id)},
+            "name": entry.title,
+            "manufacturer": "hAPI",
+            "model": "Enterprise Portal",
+            "sw_version": entry.data.get("addon_version"),
+        }
+
+    @property
+    def available(self) -> bool:
+        """Whether data is available for this sensor."""
+        return self.coordinator.last_update_success and self.coordinator.data is not None
+
+    @property
+    def native_value(self) -> int | None:
+        """Return the add-on's count, or None when it is not reported."""
+        return _to_int((self.coordinator.data or {}).get(self.entity_description.key))
+
 
 class PortalSecuritySensor(SensorEntity):
     """Броячи от Stage D: живи сесии, неуспешни проверки, отнети токени, крос-портал.
