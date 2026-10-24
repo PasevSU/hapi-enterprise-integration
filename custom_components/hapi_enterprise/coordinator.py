@@ -121,13 +121,16 @@ def _normalize_qr(qr: object) -> dict:
             "qr_archives": None,
             "locked_files": None,
             "tree_max_depth": None,
+            "integrity_failed": None,
         }
+    integrity = qr.get("integrity")
     return {
         "qr_active": qr.get("active"),
         "qr_blocked": qr.get("blocked"),
         "qr_archives": qr.get("archives"),
         "locked_files": qr.get("lockedFiles"),
         "tree_max_depth": qr.get("maxDepth"),
+        "integrity_failed": (integrity.get("failures") if isinstance(integrity, dict) else None),
     }
 
 

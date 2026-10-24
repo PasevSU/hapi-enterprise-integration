@@ -141,6 +141,9 @@
       },
       "locked_files": {
         "name": "Locked published files"
+      },
+      "integrity_failed": {
+        "name": "Failed integrity checks"
       }
     },
     "binary_sensor": {

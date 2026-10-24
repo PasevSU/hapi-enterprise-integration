@@ -141,6 +141,9 @@
       },
       "locked_files": {
         "name": "Заключени публикувани файлове"
+      },
+      "integrity_failed": {
+        "name": "Провалени проверки на целостта"
       }
     },
     "binary_sensor": {

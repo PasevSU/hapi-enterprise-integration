@@ -217,6 +217,13 @@ _QR_SENSORS: tuple[PortalSensorEntityDescription, ...] = (
         icon="mdi:file-lock-outline",
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
+    PortalSensorEntityDescription(
+        key="integrity_failed",
+        translation_key="integrity_failed",
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        icon="mdi:shield-alert-outline",
+        entity_category=EntityCategory.DIAGNOSTIC,
+    ),
 )
 
 # Версия и синхрон: текст/enum, не числа — затова са в отделен списък със свой клас.
