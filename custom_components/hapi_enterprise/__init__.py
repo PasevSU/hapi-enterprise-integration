@@ -59,9 +59,11 @@ CONFIG_SCHEMA = vol.Schema(
 
 _ALLOWED = re.compile(
     r"^p/([a-z0-9][a-z0-9-]{0,62})"
-    # `api.json` е картата, която add-on-ът записва до портала (`layout.js` я обявява като
-    # адрес): без нея същата карта се отваряше през порта 8099, но не и през Home Assistant.
-    r"(?:/(?:files(?:/[a-f0-9]{24}(?:/download)?)?|manifest|api\.json|openapi\.json|qr\.svg|storage))?$"
+    # Списъкът е ТОЧНО това, което `api.json` обявява като адреси (`api-spec.js`): картата,
+    # договорът, манифестът, файловете, хранилището, QR картинката, QR JSON договорът и
+    # ръкостискът. Липсващ елемент значи адрес, който работи на порта 8099 и дава 404 през
+    # Home Assistant — точно това се случи с `api.json` до 0.69.100.
+    r"(?:/(?:files(?:/[a-f0-9]{24}(?:/download)?)?|manifest|api\.json|openapi\.json|qr\.svg|qr\.json|ping|storage))?$"
 )
 
 # Public API Gateway (PG-6), exposed on Home Assistant's own IP and port.
