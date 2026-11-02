@@ -59,7 +59,9 @@ CONFIG_SCHEMA = vol.Schema(
 
 _ALLOWED = re.compile(
     r"^p/([a-z0-9][a-z0-9-]{0,62})"
-    r"(?:/(?:files(?:/[a-f0-9]{24}(?:/download)?)?|manifest|openapi\.json|qr\.svg|storage))?$"
+    # `api.json` е картата, която add-on-ът записва до портала (`layout.js` я обявява като
+    # адрес): без нея същата карта се отваряше през порта 8099, но не и през Home Assistant.
+    r"(?:/(?:files(?:/[a-f0-9]{24}(?:/download)?)?|manifest|api\.json|openapi\.json|qr\.svg|storage))?$"
 )
 
 # Public API Gateway (PG-6), exposed on Home Assistant's own IP and port.
