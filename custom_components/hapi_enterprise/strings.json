@@ -18,7 +18,9 @@
       "token_too_long": "The token is too long (maximum 512 characters).",
       "invalid_scan_interval": "Interval must be between 10 and 86400 seconds.",
       "invalid_auth": "The add-on rejected the admin token.",
-      "cannot_connect": "Cannot reach the add-on admin API. Check the URL and that the add-on is running."
+      "cannot_connect": "Cannot reach the add-on admin API. Check the URL and that the add-on is running.",
+      "wrong_port": "This is the ingress port (8098), which only the Supervisor may use. Enter the add-on public address: http://hapi_enterprise:8099",
+      "addon_too_old": "The address answered, but not the admin API. The add-on is probably older than 0.69.96 — update it, then try again."
     },
     "abort": {
       "already_configured": "This backend is already configured."
@@ -42,7 +44,9 @@
       "token_too_long": "The token is too long (maximum 512 characters).",
       "invalid_scan_interval": "Interval must be between 10 and 86400 seconds.",
       "invalid_auth": "The add-on rejected the admin token.",
-      "cannot_connect": "Cannot reach the add-on admin API. Check the URL and that the add-on is running."
+      "cannot_connect": "Cannot reach the add-on admin API. Check the URL and that the add-on is running.",
+      "wrong_port": "This is the ingress port (8098), which only the Supervisor may use. Enter the add-on public address: http://hapi_enterprise:8099",
+      "addon_too_old": "The address answered, but not the admin API. The add-on is probably older than 0.69.96 — update it, then try again."
     }
   },
   "entity": {

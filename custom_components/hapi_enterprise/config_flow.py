@@ -73,6 +73,16 @@ async def _async_test_connection(hass: HomeAssistant, backend_url: str, token: s
     """Verify the add-on admin API before creating or updating an entry.
 
     Returns an error key for the form, or None when the endpoint answered.
+
+    The status code decides the message, because the three failures look identical to the
+    user but have different fixes:
+
+    * **404** — the host answered, but not this path. In practice that is an add-on older
+      than 0.69.96, where the public port refuses `/admin/api/*` even with a token, so saying
+      "cannot connect" sends the user hunting for a network problem that does not exist.
+    * **403** — the ingress port (8098) accepts only the Supervisor and loopback; Home
+      Assistant is neither, so the URL has to point at the public port (8099).
+    * anything else (timeout, DNS, refused) — a real transport problem.
     """
     session = async_get_clientsession(hass)
     try:
@@ -81,8 +91,12 @@ async def _async_test_connection(hass: HomeAssistant, backend_url: str, token: s
                 backend_url.rstrip("/") + "/admin/api/whoami",
                 headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
             ) as resp:
-                if resp.status in (401, 403):
+                if resp.status == 401:
                     return "invalid_auth"
+                if resp.status == 403:
+                    return "wrong_port"
+                if resp.status == 404:
+                    return "addon_too_old"
                 if resp.status >= 400:
                     return "cannot_connect"
     except (ClientError, TimeoutError, OSError):
