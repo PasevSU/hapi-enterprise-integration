@@ -59,11 +59,14 @@ CONFIG_SCHEMA = vol.Schema(
 
 _ALLOWED = re.compile(
     r"^p/([a-z0-9][a-z0-9-]{0,62})"
-    # Списъкът е ТОЧНО това, което `api.json` обявява като адреси (`api-spec.js`): картата,
-    # договорът, манифестът, файловете, хранилището, QR картинката, QR JSON договорът и
-    # ръкостискът. Липсващ елемент значи адрес, който работи на порта 8099 и дава 404 през
-    # Home Assistant — точно това се случи с `api.json` до 0.69.100.
-    r"(?:/(?:files(?:/[a-f0-9]{24}(?:/download)?)?|manifest|api\.json|openapi\.json|qr\.svg|qr\.json|ping|storage))?$"
+    # Списъкът е ТОЧНО това, което `api.json` и картата на папката обявяват като адреси
+    # (`api-spec.js`, `routes/portal-storage.js`): самата карта, договорът, манифестът,
+    # файловете, хранилището, QR картинката, QR JSON договорът, ръкостискът и договорът за
+    # ПАПКА (`/tree`, `/tree/file`) — последният е това, което публичната страница вика, за да
+    # покаже папката на портала. Липсващ елемент значи адрес, който работи на порта 8099 и
+    # дава 404 през Home Assistant — точно това се случи с `api.json` до 0.69.100 и с
+    # папката до 0.69.101 (страницата се отваряше, а списъкът ѝ — не).
+    r"(?:/(?:files(?:/[a-f0-9]{24}(?:/download)?)?|manifest|api\.json|openapi\.json|qr\.svg|qr\.json|ping|storage|tree(?:/(?:file|api\.json|qr\.svg))?))?$"
 )
 
 # Public API Gateway (PG-6), exposed on Home Assistant's own IP and port.
