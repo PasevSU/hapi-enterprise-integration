@@ -78,7 +78,8 @@ class PortalEnterpriseCoordinator(DataUpdateCoordinator):
                     if resp.status == 404:
                         raise UpdateFailed(
                             "hAPI Enterprise sensors endpoint not found; check "
-                            "the backend URL points to the admin port (8098)"
+                            "the backend URL points to the add-on public port "
+                            "(http://hapi_enterprise:8099)"
                         )
                     resp.raise_for_status()
                     data = await resp.json(content_type=None)

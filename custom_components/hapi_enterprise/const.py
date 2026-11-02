@@ -20,5 +20,7 @@ MAX_SCAN_INTERVAL = 86400
 MIN_TOKEN_LENGTH = 24
 MAX_TOKEN_LENGTH = 512
 
-# Telemetry of the add-on, served on the admin listener (ingress port 8098).
+# Telemetry of the add-on. The integration talks to the PUBLIC listener (8099) with a Bearer
+# token: the ingress listener (8098) accepts only the Supervisor and loopback, so Home
+# Assistant cannot reach it (it is not either of those).
 SENSORS_PATH = "/admin/api/sensors"

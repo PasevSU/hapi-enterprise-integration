@@ -70,10 +70,16 @@ _PUBLIC_TAIL = re.compile(
 )
 
 
-async def _forward(hass, request, url, headers, params, extra_headers=None):
-    """Stream an upstream response without buffering (Range/resume friendly)."""
+async def _forward(hass, request, url, headers, params, extra_headers=None, method="GET", body=None):
+    """Stream an upstream response without buffering (Range/resume friendly).
+
+    Redirects and cookies are passed through: `/t/<token>` answers with `Set-Cookie` and a
+    `Location`, and dropping either would break the only door into a private portal.
+    """
     session = async_get_clientsession(hass)
-    async with session.get(url, headers=headers, params=params, timeout=120, allow_redirects=False) as upstream:
+    async with session.request(
+        method, url, headers=headers, params=params, data=body, timeout=120, allow_redirects=False
+    ) as upstream:
         response_headers = {
             "Content-Type": upstream.headers.get("Content-Type", "application/octet-stream"),
             "Cache-Control": "no-store",
@@ -83,9 +89,11 @@ async def _forward(hass, request, url, headers, params, extra_headers=None):
         if extra_headers:
             response_headers.update(extra_headers)
         response = web.StreamResponse(status=upstream.status, headers=response_headers)
-        for field in ("Content-Length", "Content-Range", "Accept-Ranges", "ETag", "Last-Modified"):
+        for field in ("Content-Length", "Content-Range", "Accept-Ranges", "ETag", "Last-Modified", "Location"):
             if upstream.headers.get(field):
                 response.headers[field] = upstream.headers[field]
+        for cookie in upstream.headers.getall("Set-Cookie", []):
+            response.headers.add("Set-Cookie", cookie)
         if upstream.headers.get("Content-Disposition"):
             response.headers["Content-Disposition"] = upstream.headers["Content-Disposition"]
         await response.prepare(request)
@@ -198,9 +206,122 @@ async def async_setup(hass, config):
             except (ClientError, TimeoutError):
                 raise web.HTTPBadGateway()
 
+    # The add-on writes links as `/p/<id>`, `/api/v1/p/<slug>/...`, `/s/<id>`, `/qr/<id>`,
+    # `/site/<slug>/<project>/` and `/secret` (links.js), and its own gateway serves them.
+    # On the Home Assistant origin NONE of those paths existed, so every QR code and every
+    # API address the panel printed answered `404: Not found` - the addresses looked right
+    # and were dead. These views put the SAME public paths on the Home Assistant port and
+    # stream them to the backend: no extra web server, no nginx, no published port.
+    #
+    # The list mirrors `hapi_enterprise/public-route-allowlist.js` (the backend's own public
+    # surface) without the auth/OIDC routes - those are hAPI's own session and must not be
+    # re-exported through Home Assistant - and without any `/admin` path.
+    def _public_view(path: str, view_name: str):
+        """One transparent proxy view for a public path on the Home Assistant port."""
+
+        class _PublicProxy(HomeAssistantView):
+            url = path
+            name = view_name
+            requires_auth = False  # The Node backend decides every request.
+
+            async def _proxy(self, request):
+                headers = {}
+                # `Cookie` се подава: `/t/<token>` отговаря с `Set-Cookie` и бисквитката е
+                # единственият начин следващата заявка да е същата сесия. Без нея частният
+                # портал се отваря веднъж (пренасочването) и след това дава 404 — тоест
+                # линкът „работи“, а порталът не се отваря.
+                for field in ("Range", "If-Range", "Content-Type", "Idempotency-Key", "X-Portal-Key", "X-File-Key", "Cookie"):
+                    value = request.headers.get(field, "")
+                    if not value:
+                        continue
+                    if len(value) > (4096 if field == "Cookie" else 1024):
+                        raise web.HTTPBadRequest()
+                    headers[field] = value
+                body = None
+                if request.method in ("POST", "PUT", "PATCH"):
+                    body = await request.read()
+                    if len(body) > 4 * 1024 * 1024:
+                        raise web.HTTPRequestEntityTooLarge(max_size=4 * 1024 * 1024, actual_size=len(body))
+                # The query is forwarded as it came, so `?key=`, filters and pagination work.
+                params = [(k, v) for k, v in request.query.items() if len(v) <= 1024]
+                try:
+                    return await _forward(
+                        hass, request, backend + request.path, headers, params,
+                        method=request.method, body=body,
+                    )
+                except (ClientError, TimeoutError):
+                    raise web.HTTPBadGateway
+
+            async def get(self, request, **_kwargs):
+                return await self._proxy(request)
+
+            async def post(self, request, **_kwargs):
+                return await self._proxy(request)
+
+        return _PublicProxy()
+
+    for _path, _name in (
+        ("/api/v1/p/{tail:.*}", "portal_api"),
+        ("/p/{tail:.*}", "portal_page"),
+        ("/s/{tail:.*}", "send_link"),
+        ("/qr/{tail:.*}", "qr_page"),
+        ("/site/{tail:.*}", "html_project"),
+        ("/t/{tail:.*}", "portal_token_login"),
+        ("/portal.html", "portal_html"),
+        ("/file.html", "file_html"),
+        ("/secret", "secret_page"),
+        ("/secret-view.js", "asset_secret_view"),
+        ("/portal.js", "asset_portal_js"),
+        ("/portal.css", "asset_portal_css"),
+        ("/portal-i18n.js", "asset_portal_i18n"),
+    ):
+        hass.http.register_view(_public_view(_path, "api:hapi_enterprise:public_" + _name))
+
+    # The same surface under a prefix Home Assistant cannot own. `/api/…` belongs to Home
+    # Assistant itself (its API view serves `/api/{path}` and demands a session), so a view
+    # registered there can be shadowed by it. `/hapi/…` is ours: the backend receives the
+    # path as if hAPI were served at the root, plus `X-Forwarded-Prefix`, so every address
+    # the add-on builds itself stays inside the prefix.
+    class HapiPrefix(HomeAssistantView):
+        url = "/hapi/{tail:.*}"
+        name = "api:hapi_enterprise:prefix"
+        requires_auth = False
+
+        async def _proxy(self, request):
+            headers = {"X-Forwarded-Prefix": "/hapi"}
+            for field in ("Host", "X-Forwarded-Host", "X-Forwarded-Proto", "X-Portal-Key", "X-File-Key",
+                          "Range", "If-Range", "Content-Type", "Idempotency-Key"):
+                value = request.headers.get(field, "")
+                if not value:
+                    continue
+                if field not in ("Host", "X-Forwarded-Host", "X-Forwarded-Proto") and len(value) > 1024:
+                    raise web.HTTPBadRequest()
+                headers[field] = value
+            body = None
+            if request.method in ("POST", "PUT", "PATCH"):
+                body = await request.read()
+                if len(body) > 4 * 1024 * 1024:
+                    raise web.HTTPRequestEntityTooLarge(max_size=4 * 1024 * 1024, actual_size=len(body))
+            target = request.path[len("/hapi"):] or "/"
+            params = [(k, v) for k, v in request.query.items() if len(v) <= 1024]
+            try:
+                return await _forward(
+                    hass, request, backend + target, headers, params,
+                    method=request.method, body=body,
+                )
+            except (ClientError, TimeoutError):
+                raise web.HTTPBadGateway
+
+        async def get(self, request, **_kwargs):
+            return await self._proxy(request)
+
+        async def post(self, request, **_kwargs):
+            return await self._proxy(request)
+
+    hass.http.register_view(HapiPrefix())
+
     class PublicGateway(HomeAssistantView):
         """Public API Gateway served by Home Assistant itself.
-
         Canonical: https://<ha-host>:8123/api/hapi_enterprise/public/v1/portals/<slug>
 
         No HA session is required; the Node backend decides every request

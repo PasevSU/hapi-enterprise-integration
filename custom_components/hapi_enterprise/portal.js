@@ -6,8 +6,10 @@
 // минават през fail-closed моста на интеграцията (`/api/hapi_enterprise/v1/p/<id>`).
 //
 // Сигурност: ключът на портала НЕ влиза в адреса на заявката — държи се във фрагмента
-// на страницата (`#token=…`) и се праща само като `X-Portal-Key`. Всички стойности се
-// вмъкват с textContent (без innerHTML), за да не може име на файл да инжектира HTML.
+// на страницата (`#token=…`) и се праща само като `X-Portal-Key`. ДАННИТЕ никога не минават
+// през `innerHTML`: всичко от API-то се вмъква с `textContent`. Единственото `innerHTML` е
+// `svg.innerHTML = paths[…]` — фиксиран SVG път от константна карта в този файл, без данни.
+// `tests/portal-variants.cjs` пази точно това правило (и в двете копия на страницата).
 
 const $ = (id) => document.getElementById(id);
 // Ключът на портала от адреса: /api/hapi_enterprise/portal/<id или slug>.
@@ -234,6 +236,15 @@ function metaItem(label, value, opts) {
   return li;
 }
 
+/** SHA-256 на байтовете, които реално ще получи потребителят. `crypto.subtle` съществува само
+ * в защитен контекст (HTTPS или localhost), затова викащият проверява преди да го ползва. */
+async function sha256Hex(buffer) {
+  const digest = await crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
 /** Изтегляне: FREE → директно; KEY_REQUIRED → с ключ в X-File-Key. */
 async function downloadFile(file, key) {
   setStatus("Изтегляне на „" + file.name + "“…");
@@ -250,6 +261,21 @@ async function downloadFile(file, key) {
       return;
     }
     const blob = await res.blob();
+    // Сверката е върху СЪЩИТЕ байтове, които се записват: ако хешът не съвпада, файлът НЕ се
+    // запазва. Дотук страницата само ПОКАЗВАШЕ SHA-256 — тоест обещание без проверка (DEF-03).
+    const expected = String(file.sha256 || "").toLowerCase();
+    let verdict = "none";
+    if (expected) {
+      if (crypto && crypto.subtle && crypto.subtle.digest) {
+        if ((await sha256Hex(await blob.arrayBuffer())) !== expected) {
+          setStatus("ВНИМАНИЕ: SHA-256 НЕ съвпада — файлът е променен и НЕ е запазен.", "err");
+          return;
+        }
+        verdict = "ok";
+      } else {
+        verdict = "noVerify";
+      }
+    }
     const link = document.createElement("a");
     const objectUrl = URL.createObjectURL(blob);
     link.href = objectUrl;
@@ -258,7 +284,10 @@ async function downloadFile(file, key) {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
-    setStatus("Изтеглянето започна: " + file.name, "ok");
+    if (verdict === "ok") setStatus("SHA-256 съвпада — файлът е свален непроменен.", "ok");
+    else if (verdict === "noVerify")
+      setStatus("Свалени без сверка: браузърът не дава SHA-256 извън HTTPS (отвори портала по HTTPS, за да се сверява).");
+    else setStatus("Изтеглянето започна: " + file.name, "ok");
   } catch {
     setStatus("Няма връзка със сървъра на портала.", "err");
   }
@@ -351,11 +380,11 @@ function paint(filter) {
   const q = String(filter || "").trim().toLocaleLowerCase();
   const list = q
     ? allFiles.filter((f) =>
-        [f.name, f.topic, f.category, f.group, (f.tags || []).join(" ")]
-          .join(" ")
-          .toLocaleLowerCase()
-          .includes(q),
-      )
+      [f.name, f.topic, f.category, f.group, (f.tags || []).join(" ")]
+        .join(" ")
+        .toLocaleLowerCase()
+        .includes(q),
+    )
     : allFiles;
   const box = $("files");
   box.replaceChildren(...list.map(fileCard));
