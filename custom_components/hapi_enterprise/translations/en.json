@@ -8,7 +8,10 @@
           "backend_url": "Admin API URL (e.g. http://hapi_enterprise:8099)",
           "token": "Admin token",
           "scan_interval": "Update interval (seconds)",
-          "panel_url": "Panel address (optional, e.g. http://homeassistant.local:8099/ui/)"
+          "panel_url": "Panel address (optional)"
+        },
+        "data_description": {
+          "panel_url": "Address opened in a browser for the hAPI panel. Leave empty to use the API address with /ui/ appended."
         }
       }
     },
@@ -36,7 +39,10 @@
           "backend_url": "Admin API URL (e.g. http://hapi_enterprise:8099)",
           "token": "Admin token",
           "scan_interval": "Update interval (seconds)",
-          "panel_url": "Panel address (optional, e.g. http://homeassistant.local:8099/ui/)"
+          "panel_url": "Panel address (optional)"
+        },
+        "data_description": {
+          "panel_url": "Address opened in a browser for the hAPI panel. Leave empty to use the API address with /ui/ appended."
         }
       }
     },
