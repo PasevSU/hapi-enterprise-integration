@@ -5,7 +5,12 @@ Two opt-in features:
 1. A fail-closed HTTP bridge for token-protected portal APIs (YAML configured):
 
     hapi_enterprise:
-      backend_url: http://<addon-hostname>:8099
+      backend_url: !secret hapi_backend_url
+
+   In `secrets.yaml`: `hapi_backend_url: http://<addon-hostname>:8099`. The admin token
+   NEVER goes into YAML: the bridge does not use it, and the telemetry token is stored by
+   the config entry (UI), not in `configuration.yaml`. If another integration needs a token
+   in YAML, it must be `!secret hapi_token` as well.
 
    Only portal-scoped read and download requests are forwarded. Admin APIs are never
    proxied by this bridge. The bridge also serves the public portal page and its assets
@@ -56,6 +61,12 @@ CONFIG_SCHEMA = vol.Schema(
     },
     extra=vol.ALLOW_EXTRA,
 )
+
+# Fail closed: административните и вътрешните пътища на hAPI не се проксират през Home
+# Assistant. Изгледите по-долу са с `requires_auth = False` (получателят на портал няма
+# профил в HA), затова те не бива да водят до защитена повърхност — точно каквото иска
+# договорът за автентикация на HA: публичен изглед обслужва само публични данни.
+_ADMIN_PATH = re.compile(r"^/(?:admin|internal)(?:/|$)")
 
 _ALLOWED = re.compile(
     r"^p/([a-z0-9][a-z0-9-]{0,62})"
@@ -244,6 +255,19 @@ async def async_setup(hass, config):
                     if len(value) > (4096 if field == "Cookie" else 1024):
                         raise web.HTTPBadRequest()
                     headers[field] = value
+                # Адресите в страницата (и в `api.json`) се строят от ИСТИНСКИЯ адрес на
+                # Home Assistant. Без тези два реда add-on-ът вижда `http://<вътрешен хост>:8099`
+                # и връща `http://…` връзки на инсталация, която се отваря само по HTTPS —
+                # тоест всеки адрес, който порталът показва, е мъртъв.
+                # Схемата се взема от заявката; `request.scheme` липсва при тестовите обекти
+                # и при по-стари версии, затова има безопасен резерв.
+                proto = str(request.headers.get("X-Forwarded-Proto", "")).split(",")[0].strip()
+                if not proto:
+                    proto = str(getattr(request, "scheme", "") or "").strip()
+                headers["X-Forwarded-Proto"] = "https" if proto == "https" else "http"
+                host = str(request.headers.get("X-Forwarded-Host") or request.headers.get("Host") or "").split(",")[0].strip()
+                if host:
+                    headers["X-Forwarded-Host"] = host
                 body = None
                 if request.method in ("POST", "PUT", "PATCH"):
                     body = await request.read()
@@ -310,6 +334,12 @@ async def async_setup(hass, config):
                 if len(body) > 4 * 1024 * 1024:
                     raise web.HTTPRequestEntityTooLarge(max_size=4 * 1024 * 1024, actual_size=len(body))
             target = request.path[len("/hapi"):] or "/"
+            # Fail closed, както изисква договорът за автентикация на Home Assistant:
+            # изглед с `requires_auth = False` не бива да дава достъп до защитени данни.
+            # `/admin/...` и `/internal/...` на hAPI са точно такива — през този префикс
+            # те НЕ се проксират, а отговорът е 404 (не 401: не издаваме, че пътят съществува).
+            if _ADMIN_PATH.match(target):
+                raise web.HTTPNotFound()
             params = [(k, v) for k, v in request.query.items() if len(v) <= 1024]
             try:
                 return await _forward(
