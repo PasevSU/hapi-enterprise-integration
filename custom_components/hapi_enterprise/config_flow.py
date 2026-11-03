@@ -15,6 +15,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     CONF_BACKEND_URL,
+    CONF_PANEL_URL,
     CONF_SCAN_INTERVAL,
     CONF_TOKEN,
     DEFAULT_SCAN_INTERVAL,
@@ -52,6 +53,11 @@ def _validate(values: dict[str, Any], *, token_required: bool) -> dict[str, str]
     url = (values.get(CONF_BACKEND_URL) or "").strip()
     if not _URL_RE.fullmatch(url):
         errors[CONF_BACKEND_URL] = "invalid_url"
+
+    # Адресът на панела е по избор: празен значи „същият хост като admin API-то“.
+    panel = (values.get(CONF_PANEL_URL) or "").strip()
+    if panel and not _URL_RE.fullmatch(panel):
+        errors[CONF_PANEL_URL] = "invalid_url"
 
     token = (values.get(CONF_TOKEN) or "").strip()
     if token:
@@ -121,6 +127,10 @@ def _data_schema(defaults: dict[str, Any], *, token_required: bool) -> vol.Schem
                 CONF_SCAN_INTERVAL,
                 default=int(defaults.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)),
             ): _INTERVAL_SELECTOR,
+            # По избор: адресът, който се отваря в браузъра. Празен → `backend_url` + `/ui/`.
+            vol.Optional(
+                CONF_PANEL_URL, default=str(defaults.get(CONF_PANEL_URL, "") or "")
+            ): _URL_SELECTOR,
         }
     )
 
@@ -147,6 +157,10 @@ class PortalEnterpriseConfigFlow(ConfigFlow, domain=DOMAIN):
                 else:
                     user_input[CONF_BACKEND_URL] = backend_url
                     user_input[CONF_TOKEN] = token
+                    if not str(user_input.get(CONF_PANEL_URL) or "").strip():
+                        user_input.pop(CONF_PANEL_URL, None)
+                    else:
+                        user_input[CONF_PANEL_URL] = str(user_input[CONF_PANEL_URL]).strip().rstrip("/")
                     await self.async_set_unique_id(backend_url)
                     self._abort_if_unique_id_configured()
                     return self.async_create_entry(title=NAME, data=user_input)
@@ -193,6 +207,9 @@ class PortalEnterpriseOptionsFlow(OptionsFlow):
                     }
                     if token:
                         cleaned[CONF_TOKEN] = token
+                    panel = str(user_input.get(CONF_PANEL_URL) or "").strip().rstrip("/")
+                    if panel:
+                        cleaned[CONF_PANEL_URL] = panel
                     return self.async_create_entry(title="", data=cleaned)
 
         return self.async_show_form(

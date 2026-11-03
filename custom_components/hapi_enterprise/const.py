@@ -13,6 +13,11 @@ PLATFORMS = ["sensor", "binary_sensor"]
 CONF_BACKEND_URL = "backend_url"
 CONF_TOKEN = "token"
 CONF_SCAN_INTERVAL = "scan_interval"
+# Адресът, който човек отваря в браузъра (панелът на hAPI). Може да е ingress адрес или
+# публичен адрес — различен от `backend_url`, който Home Assistant ползва за заявки.
+# По подразбиране се взима `backend_url` + `/ui/`, но когато add-on-ът е достъпен само през
+# Supervisor ingress, този адрес не се отваря от браузъра и полето е задължително за връзка.
+CONF_PANEL_URL = "panel_url"
 
 DEFAULT_SCAN_INTERVAL = 60
 MIN_SCAN_INTERVAL = 10

@@ -26,6 +26,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .coordinator import PortalEnterpriseCoordinator
+from .entity import portal_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -91,13 +92,7 @@ class PortalProblemBinarySensor(BinarySensorEntity):
         self.entity_description = description
         self.coordinator = coordinator
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": entry.title,
-            "manufacturer": "hAPI",
-            "model": "Enterprise Portal",
-            "sw_version": entry.data.get("addon_version"),
-        }
+        self._attr_device_info = portal_device_info(entry, self.coordinator.backend_url, entry.data.get("addon_version"))
 
     @property
     def available(self) -> bool:

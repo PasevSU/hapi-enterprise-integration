@@ -19,6 +19,7 @@ from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN
 from .coordinator import PortalEnterpriseCoordinator
+from .entity import portal_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -323,13 +324,7 @@ class PortalEnterpriseTotalSensor(SensorEntity):
         self.entity_description = description
         self.coordinator = coordinator
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": entry.title,
-            "manufacturer": "hAPI",
-            "model": "Enterprise Portal",
-            "sw_version": entry.data.get("addon_version"),
-        }
+        self._attr_device_info = portal_device_info(entry, self.coordinator.backend_url, entry.data.get("addon_version"))
 
     @property
     def available(self) -> bool:
@@ -378,13 +373,7 @@ class PortalStatusSensor(SensorEntity):
         self.coordinator = coordinator
         self.integration_version = integration_version
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": entry.title,
-            "manufacturer": "hAPI",
-            "model": "Enterprise Portal",
-            "sw_version": integration_version,
-        }
+        self._attr_device_info = portal_device_info(entry, self.coordinator.backend_url, integration_version)
 
     @property
     def available(self) -> bool:
@@ -457,13 +446,7 @@ class PortalGuidanceSensor(SensorEntity):
         self.entity_description = description
         self.coordinator = coordinator
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": entry.title,
-            "manufacturer": "hAPI",
-            "model": "Enterprise Portal",
-            "sw_version": entry.data.get("addon_version"),
-        }
+        self._attr_device_info = portal_device_info(entry, self.coordinator.backend_url, entry.data.get("addon_version"))
 
     @property
     def available(self) -> bool:
@@ -535,13 +518,7 @@ class PortalQrSensor(SensorEntity):
         self.entity_description = description
         self.coordinator = coordinator
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": entry.title,
-            "manufacturer": "hAPI",
-            "model": "Enterprise Portal",
-            "sw_version": entry.data.get("addon_version"),
-        }
+        self._attr_device_info = portal_device_info(entry, self.coordinator.backend_url, entry.data.get("addon_version"))
 
     @property
     def available(self) -> bool:
@@ -573,13 +550,7 @@ class PortalSecuritySensor(SensorEntity):
         self.entity_description = description
         self.coordinator = coordinator
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_device_info = {
-            "identifiers": {(DOMAIN, entry.entry_id)},
-            "name": entry.title,
-            "manufacturer": "hAPI",
-            "model": "Enterprise Portal",
-            "sw_version": entry.data.get("addon_version"),
-        }
+        self._attr_device_info = portal_device_info(entry, self.coordinator.backend_url, entry.data.get("addon_version"))
 
     @property
     def available(self) -> bool:

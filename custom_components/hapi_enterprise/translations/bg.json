@@ -7,7 +7,8 @@
         "data": {
           "backend_url": "Адрес на административното API (напр. http://hapi_enterprise:8099)",
           "token": "Административен токен",
-          "scan_interval": "Интервал на обновяване (секунди)"
+          "scan_interval": "Интервал на обновяване (секунди)",
+          "panel_url": "Адрес на панела (по избор, напр. http://homeassistant.local:8099/ui/)"
         }
       }
     },
@@ -34,7 +35,8 @@
         "data": {
           "backend_url": "Адрес на административното API (напр. http://hapi_enterprise:8099)",
           "token": "Административен токен",
-          "scan_interval": "Интервал на обновяване (секунди)"
+          "scan_interval": "Интервал на обновяване (секунди)",
+          "panel_url": "Адрес на панела (по избор, напр. http://homeassistant.local:8099/ui/)"
         }
       }
     },
