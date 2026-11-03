@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="bg">
+
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -9,8 +10,9 @@
   <title>Портал за документи</title>
   <link rel="stylesheet" href="/api/hapi_enterprise/assets/portal.css" />
 </head>
+
 <body>
-  <a class="skip" href="#files" id="skip">Към файловете</a>
+  <button type="button" class="skip" id="skip">Към файловете</button>
 
   <header class="hero">
     <div class="wrap">
@@ -24,13 +26,26 @@
       <p id="contact" class="contact" hidden></p>
       <div class="hero-actions">
         <button type="button" id="copy-link" class="btn btn-ghost">Копирай адреса</button>
-        <a id="api-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener noreferrer">API</a>
-        <a id="manifest-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener noreferrer">Манифест</a>
+        <!-- PP-04: „API“ и „Манифест“ не водят навън — разгъват информацията в самата страница. -->
+        <button type="button" id="api-open" class="btn btn-ghost" aria-controls="doc-info"
+          aria-expanded="false">API</button>
+        <button type="button" id="manifest-open" class="btn btn-ghost" aria-controls="doc-info"
+          aria-expanded="false">Манифест</button>
       </div>
     </div>
   </header>
 
   <main class="wrap" id="main">
+    <section class="panel doc-info" id="doc-info" aria-labelledby="doc-info-title" hidden>
+      <div class="panel-head">
+        <h2 id="doc-info-title"></h2>
+        <button type="button" id="doc-info-close" class="btn btn-ghost btn-sm">Затвори</button>
+      </div>
+      <p id="doc-info-note" class="hint"></p>
+      <p id="doc-info-status" class="status" role="status" aria-live="polite" hidden></p>
+      <dl id="doc-info-body" class="info-list"></dl>
+    </section>
+
     <section class="panel" aria-labelledby="files-title">
       <div class="panel-head">
         <h2 id="files-title">Файлове</h2>
@@ -63,10 +78,12 @@
 
   <footer class="foot">
     <div class="wrap">
-      <p id="foot-note">Порталът се обслужва от <strong>hAPI Enterprise</strong> · съдържанието е собственост на издателя.</p>
+      <p id="foot-note">Порталът се обслужва от <strong>hAPI Enterprise</strong> · съдържанието е собственост на
+        издателя.</p>
     </div>
   </footer>
 
   <script src="/api/hapi_enterprise/assets/portal.js" defer></script>
 </body>
+
 </html>

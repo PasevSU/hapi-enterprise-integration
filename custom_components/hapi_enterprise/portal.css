@@ -200,3 +200,20 @@ main { padding: 20px 0 8px; display: grid; gap: 16px; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* PP-04: информацията се разгъва в страницата, а контактът е бутон, не линк. */
+.info-list { display: grid; grid-template-columns: minmax(120px, max-content) 1fr; gap: 10px 18px; margin: 0; }
+.info-list dt { color: var(--muted); font-size: 0.82rem; }
+.info-list dd { margin: 0; overflow-wrap: anywhere; }
+.info-list dd code, .info-list dd .mono { font-size: 0.8rem; }
+.info-list .btn { margin-inline-start: 8px; }
+.link-btn {
+  display: inline; padding: 0; border: 0; background: none;
+  color: var(--accent); font: inherit; text-decoration: none; cursor: pointer;
+}
+.link-btn:hover { text-decoration: underline; }
+.file-folder {
+  display: inline-flex; align-items: center; gap: 6px; padding: 0; border: 0;
+  background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer;
+}
+.file-folder:hover { color: var(--accent); }
