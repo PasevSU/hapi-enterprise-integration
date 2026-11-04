@@ -187,9 +187,16 @@ async def async_setup(hass, config):
             # No HA Authorization header is forwarded. Portal key is sent as a separate header.
             portal_key = request.headers.get("X-Portal-Key", "")
             file_key = request.headers.get("X-File-Key", "")
-            if not portal_key or len(portal_key) > 512 or len(file_key) > 512:
+            if len(portal_key) > 512 or len(file_key) > 512:
                 raise web.HTTPUnauthorized()
-            headers = {"Authorization": "Bearer " + portal_key}
+            # Публичен портал се отваря без ключ. До 0.69.146 тук се отговаряше 401 без
+            # `X-Portal-Key`, тоест страницата на публичен портал оставаше на „Зареждане…“,
+            # макар същите данни да излизат през публичния канал. Решението е на Node
+            # backend-а (FREE / KEY_REQUIRED / DISABLED), точно както при останалите
+            # публични изгледи — тук не се издава 401 вместо него.
+            headers = {}
+            if portal_key:
+                headers["Authorization"] = "Bearer " + portal_key
             if file_key:
                 headers["X-File-Key"] = file_key
             # Preserve resumable downloads end-to-end. The Node backend validates ranges.

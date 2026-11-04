@@ -26,6 +26,11 @@ const pageUrl = () =>
   (token ? "#token=" + encodeURIComponent(token) : "");
 
 const MAX_LISTED = 500;
+// Състояние на режим „папка“: съдържанието на СОБСТВЕНАТА папка на портала — това, до
+// което води QR кодът. `null` значи „показвай регистрираните файлове“.
+let folderRel = null;
+let folderFiles = [];
+let folderSubs = [];
 let portal = null;
 let allFiles = [];
 // Профил на съдържанието — всички текстове на страницата се извеждат от него.
@@ -375,9 +380,165 @@ function fileCard(file) {
   return li;
 }
 
+// ── Режим „папка“ (0.69.147) ─────────────────────────────────────────────
+// Порталът е QR кодът, който води до ФАЙЛОВЕТЕ. Затова страницата има бутон, който
+// показва съдържанието на собствената папка на портала. Заявките минават през
+// key-защитения канал (`/api/hapi_enterprise/v1/p/<slug>/tree`), а ключът се носи в
+// заглавие `X-Portal-Key` — НЕ в адреса: адресът се споделя, ключът не.
+
+/** Подпапка: бутон, който влиза в нея (страницата не дава линкове). */
+function folderRow(sub) {
+  const li = document.createElement("li");
+  li.className = "file";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "file-name file-folder";
+  btn.textContent = "\uD83D\uDCC1 " + sub.name;
+  btn.addEventListener("click", () => { void openFolder(sub.path); });
+  li.append(btn);
+  return li;
+}
+
+/** Файл от папката: име, размер, дата и бутон за сваляне по ПЪТ. */
+function folderFileCard(file) {
+  const li = document.createElement("li");
+  li.className = "file";
+  const head = document.createElement("div");
+  head.className = "file-head";
+  const glyph = document.createElement("span");
+  glyph.className = "file-glyph";
+  glyph.append(icon("file"));
+  const title = document.createElement("h3");
+  title.className = "file-name";
+  title.textContent = file.name;
+  head.append(glyph, title);
+  li.append(head);
+
+  const meta = document.createElement("ul");
+  meta.className = "file-meta";
+  meta.append(metaItem("", fmtSize(file.size)));
+  const date = fmtDate(file.modifiedAt);
+  if (date) meta.append(metaItem("", date));
+  li.append(meta);
+
+  const actions = document.createElement("div");
+  actions.className = "file-actions";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "btn btn-primary";
+  btn.append(icon("download"), document.createTextNode(" Изтегли"));
+  btn.addEventListener("click", () => { void downloadFolderFile(file.path); });
+  actions.append(btn);
+  li.append(actions);
+  return li;
+}
+
+/** Зарежда папка от портала. `rel` е относителна на корена на портала. */
+async function loadFolder(rel) {
+  setStatus("Зареждам папката…");
+  try {
+    const res = await fetch(apiBase + "/tree?path=" + encodeURIComponent("/" + rel), {
+      headers: authHeaders(),
+      referrerPolicy: "no-referrer",
+    });
+    if (!res.ok) {
+      setStatus("Папката не е достъпна (HTTP " + res.status + ").", "err");
+      return false;
+    }
+    const data = await res.json().catch(() => null);
+    if (!data || !Array.isArray(data.files)) {
+      setStatus("Папката не може да се прочете.", "err");
+      return false;
+    }
+    folderRel = String(rel || "");
+    folderFiles = data.files.map((f) => ({ name: f.name, path: f.path, size: f.size, modifiedAt: f.modifiedAt }));
+    folderSubs = Array.isArray(data.folders) ? data.folders.map((f) => ({ name: f.name, path: f.path })) : [];
+    const head = $("files-title");
+    if (head) head.textContent = "Папка /" + (folderRel ? folderRel + "/" : "");
+    paint($("q").value);
+    setStatus("");
+    return true;
+  } catch {
+    setStatus("Няма връзка със сървъра на портала.", "err");
+    return false;
+  }
+}
+
+/** Влиза в подпапка (същата страница, без смяна на адреса). */
+async function openFolder(rel) {
+  await loadFolder(rel);
+}
+
+/** Сваля файл от папката по ПЪТ (регистрираните файлове се свалят по id). */
+async function downloadFolderFile(rel) {
+  setStatus("Изтегляне на „" + rel + "“…");
+  try {
+    const res = await fetch(apiBase + "/tree/file?path=" + encodeURIComponent("/" + rel), {
+      headers: authHeaders(),
+      referrerPolicy: "no-referrer",
+    });
+    if (res.status === 403) {
+      setStatus("Издателят е заключил този файл — отвори го през регистрираното копие.", "err");
+      return;
+    }
+    if (!res.ok) {
+      setStatus("Изтеглянето не бе успешно (HTTP " + res.status + ").", "err");
+      return;
+    }
+    const blob = await res.blob();
+    const name = String(rel).split("/").pop() || "file";
+    const link = document.createElement("a");
+    const objectUrl = URL.createObjectURL(blob);
+    link.href = objectUrl;
+    link.download = name;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+    setStatus("Изтеглянето започна: " + name, "ok");
+  } catch {
+    setStatus("Няма връзка със сървъра на портала.", "err");
+  }
+}
+
+/**
+ * Копчето „Отвори папката“: превключва между папката на портала и регистрираните файлове.
+ * Показва се само когато порталът НАИСТИНА има собствена папка (сървърът го обявява в
+ * `urls.folders`), защото `/tree` за портал в общото хранилище отговаря 403.
+ */
+async function toggleFolder() {
+  const btn = $("folder-open");
+  if (folderRel !== null) {
+    folderRel = null;
+    folderFiles = [];
+    folderSubs = [];
+    if (btn) btn.textContent = "Отвори папката";
+    const head = $("files-title");
+    if (head) head.textContent = prof && prof.total ? prof.noun.capMany : "Съдържание";
+    paint($("q").value);
+    return;
+  }
+  const ok = await loadFolder("");
+  if (ok && btn) btn.textContent = "Регистрирани файлове";
+}
+
 /** Показва файловете, които отговарят на търсенето (по име, тема, категория, група). */
 function paint(filter) {
   const q = String(filter || "").trim().toLocaleLowerCase();
+  const box = $("files");
+  // Режим „папка“: истинските файлове от папката на портала. Регистрираните остават втори
+  // изглед — бутонът връща към тях, за да не се губи нищо, което издателят е обявил.
+  if (folderRel !== null) {
+    const files = q ? folderFiles.filter((f) => String(f.name).toLocaleLowerCase().includes(q)) : folderFiles;
+    const subs = q ? [] : folderSubs;
+    const rows = subs.map(folderRow).concat(files.map(folderFileCard));
+    box.replaceChildren(...rows);
+    $("empty").hidden = rows.length > 0;
+    if (!rows.length) $("empty").textContent = "Тази папка е празна.";
+    $("count").textContent = files.length + (files.length === 1 ? " файл" : " файла");
+    if (rows.length) setStatus("");
+    return;
+  }
   const list = q
     ? allFiles.filter((f) =>
       [f.name, f.topic, f.category, f.group, (f.tags || []).join(" ")]
@@ -386,7 +547,6 @@ function paint(filter) {
         .includes(q),
     )
     : allFiles;
-  const box = $("files");
   box.replaceChildren(...list.map(fileCard));
   $("empty").hidden = list.length > 0;
   if (!list.length) {
@@ -618,6 +778,22 @@ function paintPortal(data) {
   $("qr").src = apiBase + "/qr.svg";
   $("portal-url").textContent = pageUrl();
   $("copy-link").addEventListener("click", () => copy(pageUrl(), "Адресът на портала е копиран."));
+  // Копчето към ПАПКАТА: порталът е QR кодът, който води до файловете — затова страницата
+  // има директен вход към папката на портала. Показва се, когато порталът има собствена
+  // папка (сървърът я обявява чрез `FOLDERS`).
+  const folderBtn = $("folder-open");
+  if (folderBtn) {
+    // Копчето се показва само когато порталът НАИСТИНА има собствена папка — сървърът го
+    // обявява в `urls.folders` (`'1'`). Натискането показва съдържанието на папката В
+    // СТРАНИЦАТА: посетителят не сменя адрес и ключът не влиза в него.
+    const urls = data.urls || {};
+    const hasFolder = String(urls.folders || "") === "1";
+    folderBtn.hidden = !hasFolder;
+    if (hasFolder && !folderBtn.dataset.wired) {
+      folderBtn.dataset.wired = "1";
+      folderBtn.addEventListener("click", () => { void toggleFolder(); });
+    }
+  }
 }
 
 (async () => {
