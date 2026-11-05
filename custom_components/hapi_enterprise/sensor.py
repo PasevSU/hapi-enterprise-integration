@@ -284,7 +284,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensor platform from a config entry."""
-    coordinator: PortalEnterpriseCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: PortalEnterpriseCoordinator = entry.runtime_data
     integration = await async_get_integration(hass, DOMAIN)
     integration_version = getattr(integration, "version", None)
     async_add_entities(

@@ -70,7 +70,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the binary sensor platform from a config entry."""
-    coordinator: PortalEnterpriseCoordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: PortalEnterpriseCoordinator = entry.runtime_data
     async_add_entities(
         PortalProblemBinarySensor(coordinator, entry, description)
         for description in _BINARY_SENSORS

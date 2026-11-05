@@ -131,8 +131,7 @@ async def async_setup(hass, config):
     """Register the bridge views; UI (config flow) setup works without YAML."""
     settings = config.get(DOMAIN, {})
     backend = settings.get("backend_url", "")
-    hass.data.setdefault(DOMAIN, {})
-    # Files are read once in an executor, never inside a request handler.
+    # Файловете се четат ВЕДНЪЖ в executor, никога в манипулатор на заявка.
     static = await hass.async_add_executor_job(_read_static_files)
 
     class PortalPage(HomeAssistantView):
@@ -433,7 +432,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up the telemetry sensors from a config entry."""
     backend_url, token, scan_interval = _entry_settings(entry)
     coordinator = PortalEnterpriseCoordinator(hass, backend_url, token, scan_interval)
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    # `entry.runtime_data` е поддържаното място за състояние на едно вписване (2024.6+).
+    # Дотук координаторът се пазеше в `hass.data[DOMAIN][entry_id]`: работи, но е наследеният
+    # модел — при презареждане на вписването ключът оставаше, ако не се изчисти ръчно, а
+    # платформите трябваше да знаят как е устроен речникът.
+    entry.runtime_data = coordinator
     await coordinator.async_config_entry_first_refresh()
     # Options changes must apply immediately, without removing the integration.
     entry.async_on_unload(entry.add_update_listener(async_update_entry))
@@ -443,15 +446,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data.get(DOMAIN, {}).pop(entry.entry_id, None)
-    return unload_ok
+    # Нищо за чистене на ръка: `runtime_data` се освобождава заедно с вписването.
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 async def async_update_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
     """Handle an options update by refreshing the coordinator in place."""
     backend_url, token, scan_interval = _entry_settings(entry)
-    coordinator = hass.data.setdefault(DOMAIN, {}).get(entry.entry_id)
+    coordinator = getattr(entry, "runtime_data", None)
     if not isinstance(coordinator, PortalEnterpriseCoordinator):
         return
     coordinator.backend_url = backend_url
