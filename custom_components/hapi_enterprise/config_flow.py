@@ -26,6 +26,7 @@ from .const import (
     MIN_TOKEN_LENGTH,
     NAME,
 )
+from .discovery import async_detect
 
 _URL_RE = re.compile(r"^https?://[a-zA-Z0-9_.-]+(?::[0-9]{1,5})?(?:/[^\s]*)?$")
 
@@ -140,11 +141,43 @@ class PortalEnterpriseConfigFlow(ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    async def _async_create(self, values: dict[str, Any]) -> ConfigFlowResult:
+        """Normalize what will be stored and create the entry."""
+        data = dict(values)
+        data[CONF_BACKEND_URL] = str(data[CONF_BACKEND_URL]).strip().rstrip("/")
+        data[CONF_TOKEN] = str(data[CONF_TOKEN]).strip()
+        panel = str(data.get(CONF_PANEL_URL) or "").strip()
+        if panel:
+            data[CONF_PANEL_URL] = panel.rstrip("/")
+        else:
+            data.pop(CONF_PANEL_URL, None)
+        await self.async_set_unique_id(data[CONF_BACKEND_URL])
+        self._abort_if_unique_id_configured()
+        return self.async_create_entry(title=NAME, data=data)
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle the user step."""
+        """Handle the user step — the form arrives filled in when hAPI is installed.
+
+        Когато Home Assistant има Supervisor и приложението е инсталирано, адресът и токенът
+        са известни: откриват се, проверяват се и записът се създава без ръчно въвеждане.
+        Ако нещо липсва (HA без Supervisor, приложение на друг хост, отказан достъп до
+        опциите), същата форма се показва с каквото е намерено — нищо не се губи.
+        """
         errors: dict[str, str] = {}
+        detected = await async_detect(self.hass)
+        defaults = {**detected.as_defaults(), **(user_input or {})}
+
+        if user_input is None and detected.complete:
+            # Всичко е намерено — проверяваме връзката и създаваме записа направо.
+            probe = await _async_test_connection(
+                self.hass, str(detected.backend_url), str(detected.token)
+            )
+            if probe is None:
+                return await self._async_create(defaults)
+            errors["base"] = probe
+
         if user_input is not None:
             errors = _validate(user_input, token_required=True)
             if not errors:
@@ -155,18 +188,11 @@ class PortalEnterpriseConfigFlow(ConfigFlow, domain=DOMAIN):
                 if connection_error:
                     errors["base"] = connection_error
                 else:
-                    user_input[CONF_BACKEND_URL] = backend_url
-                    user_input[CONF_TOKEN] = token
-                    if not str(user_input.get(CONF_PANEL_URL) or "").strip():
-                        user_input.pop(CONF_PANEL_URL, None)
-                    else:
-                        user_input[CONF_PANEL_URL] = str(user_input[CONF_PANEL_URL]).strip().rstrip("/")
-                    await self.async_set_unique_id(backend_url)
-                    self._abort_if_unique_id_configured()
-                    return self.async_create_entry(title=NAME, data=user_input)
+                    return await self._async_create(user_input)
+
         return self.async_show_form(
             step_id="user",
-            data_schema=_data_schema(user_input or {}, token_required=True),
+            data_schema=_data_schema(defaults, token_required=True),
             errors=errors,
         )
 
@@ -189,6 +215,14 @@ class PortalEnterpriseOptionsFlow(OptionsFlow):
         """Handle the options step."""
         errors: dict[str, str] = {}
         current = {**self._entry.data, **self._entry.options}
+
+        # Липсващ адрес или токен се допълва от Supervisor — същото откриване като при
+        # първоначалната настройка. Намереното не презаписва запазеното.
+        if not current.get(CONF_BACKEND_URL) or not current.get(CONF_TOKEN):
+            detected = await async_detect(self.hass)
+            for key, value in detected.as_defaults().items():
+                if not current.get(key):
+                    current[key] = value
 
         if user_input is not None:
             errors = _validate(user_input, token_required=False)
