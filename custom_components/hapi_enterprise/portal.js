@@ -166,20 +166,8 @@ function applyWording(p) {
       : "Търси по име";
   $("q-label").textContent = $("q").placeholder;
 
-  // Бележки под QR кода — само за неща, които са налични в портала.
-  const notes = [];
-  if (p.allHash) notes.push("Всеки файл носи SHA-256 отпечатък — сверявай го след изтегляне.");
-  else if (p.hasHash) notes.push("Показаните отпечатъци са SHA-256 — сверявай ги след изтегляне.");
-  if (p.hasKey) notes.push("Файловете с ключ се отварят само с ключа, издаден от издателя.");
-  if (p.allDisabled) notes.push("Издателят е спрял изтеглянето на всички файлове в портала.");
-  const note = $("qr-note");
-  note.textContent = notes.join(" ");
-  note.hidden = notes.length === 0;
-
-  $("qr-hint").textContent =
-    p.isPublic && !token
-      ? "Сканирай кода, за да отвориш портала на друго устройство."
-      : "Сканирай кода или сподели адреса — за този портал е нужен ключ от издателя.";
+  // QR кодът НЕ се показва на самата страница: посетителят вече е тук, а кодът води точно
+  // до тази страница. За споделяне има бутон „Копирай адреса“, който дава същия адрес.
 
   const details = [];
   if (hasFiles) details.push(p.total + " " + nounFor(p.total, noun));
@@ -775,8 +763,6 @@ function paintPortal(data) {
     if (manifestBtn) manifestBtn.addEventListener("click", () => void openInfo("manifest"));
     if (closeBtn) closeBtn.addEventListener("click", closeInfo);
   }
-  $("qr").src = apiBase + "/qr.svg";
-  $("portal-url").textContent = pageUrl();
   $("copy-link").addEventListener("click", () => copy(pageUrl(), "Адресът на портала е копиран."));
   // Копчето към ПАПКАТА: порталът е QR кодът, който води до файловете — затова страницата
   // има директен вход към папката на портала. Показва се, когато порталът има собствена

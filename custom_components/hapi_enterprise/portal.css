@@ -175,18 +175,6 @@ main { padding: 20px 0 8px; display: grid; gap: 16px; }
   stroke-linecap: round; stroke-linejoin: round;
 }
 
-/* ── QR ────────────────────────────────────────────────────────────────── */
-.qr-panel h2 { margin-bottom: 12px; }
-.qr-box { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
-.qr-box img {
-  width: 168px; height: 168px; flex: 0 0 auto;
-  background: #fff; padding: 8px; border-radius: 12px; border: 1px solid var(--line);
-}
-.qr-text { flex: 1 1 240px; min-width: 0; }
-.qr-text p { margin: 0 0 8px; font-size: 0.9rem; color: var(--muted); }
-.hint { font-size: 0.82rem; }
-.qr-text .mono { color: var(--ink); }
-
 /* ── Долен колонтитул ──────────────────────────────────────────────────── */
 .foot { padding: 18px 0 28px; border-top: 1px solid var(--line); margin-top: 12px; }
 .foot p { margin: 0; font-size: 0.82rem; color: var(--muted); text-align: center; }
@@ -194,7 +182,6 @@ main { padding: 20px 0 8px; display: grid; gap: 16px; }
 @media (max-width: 520px) {
   .hero { padding-top: 20px; }
   .panel { padding: 14px; }
-  .qr-box img { width: 148px; height: 148px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
