@@ -1,7 +1,9 @@
 {
   "domain": "hapi_enterprise",
   "name": "hAPI Enterprise",
-  "after_dependencies": [],
+  "after_dependencies": [
+    "hassio"
+  ],
   "codeowners": [
     "@PasevSU"
   ],
@@ -17,5 +19,5 @@
     "hapi_enterprise"
   ],
   "requirements": [],
-  "version": "0.69.192"
+  "version": "0.69.193"
 }
