@@ -26,10 +26,16 @@ _LOGGER = logging.getLogger(__name__)
 
 @dataclass(frozen=True, kw_only=True)
 class PortalSensorEntityDescription(SensorEntityDescription):
-    """Describe a hAPI Enterprise sensor entity."""
+    """Describe a hAPI Enterprise sensor entity.
+
+    `suggested_display_precision` е `None` по подразбиране, а не 0: в Home Assistant
+    2026.11 прецизия 0 при ТЕКСТОВА стойност е грешка — `sensor.hapi_enterprise_add_on_version`
+    не се създаваше с `ValueError: … suggesting precision '0' … non-numeric value '0.69.198'`.
+    Числовите сензори, на които им трябва закръгляне, го задават изрично.
+    """
 
     key: str
-    suggested_display_precision: int = 0
+    suggested_display_precision: int | None = None
 
 
 _TOTAL_SENSORS: tuple[PortalSensorEntityDescription, ...] = (
