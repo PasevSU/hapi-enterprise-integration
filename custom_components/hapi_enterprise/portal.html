@@ -37,6 +37,35 @@
   </header>
 
   <main class="wrap" id="main">
+    <!-- МОБИЛНА КОРА (PP-15): същата като в add-on варианта, за да не се разминават двата
+         портала. Числата се смятат от данните — тук няма нито едно написано число. -->
+    <section class="stats" id="stats" aria-label="Порталът в числа">
+      <div class="stat">
+        <span class="stat-n" id="stat-files">0</span>
+        <span class="stat-l" id="stat-files-label">Файлове</span>
+      </div>
+      <div class="stat">
+        <span class="stat-n" id="stat-folders">0</span>
+        <span class="stat-l" id="stat-folders-label">Папки</span>
+      </div>
+      <div class="stat">
+        <span class="stat-n" id="stat-hash">0</span>
+        <span class="stat-l" id="stat-hash-label">С отпечатък</span>
+      </div>
+      <div class="stat">
+        <span class="stat-n" id="stat-key">0</span>
+        <span class="stat-l" id="stat-key-label">С ключ</span>
+      </div>
+    </section>
+
+    <section class="panel access-card" id="access-card" aria-labelledby="access-title">
+      <div class="panel-head">
+        <h2 id="access-title">Статус на достъпа</h2>
+        <span id="access-state" class="chip chip-ok">Публичен достъп</span>
+      </div>
+      <ul id="access-list" class="summary-list"></ul>
+    </section>
+
     <section class="panel doc-info" id="doc-info" aria-labelledby="doc-info-title" hidden>
       <div class="panel-head">
         <h2 id="doc-info-title"></h2>
@@ -51,6 +80,9 @@
       <div class="panel-head">
         <h2 id="files-title">Файлове</h2>
         <span id="count" class="count" aria-live="polite"></span>
+        <!-- Цялото дърво: текущото ниво по подразбиране, но с ЕДНО натискане се виждат
+             ВСИЧКИ папки и файлове. Появява се само когато порталът има собствена папка. -->
+        <button type="button" id="tree-all" class="btn btn-ghost btn-sm" hidden>Покажи всичко</button>
       </div>
       <div class="toolbar" id="toolbar">
         <label class="search">
@@ -63,7 +95,39 @@
       <p id="empty" class="empty" hidden>Няма достъпни файлове за показване.</p>
       <p id="more" class="more" hidden></p>
     </section>
+
+    <!-- Листът с информация за ЕДИН файл: съдържанието е същото като в add-on варианта —
+         обща информация, цялост и отпечатък, сверка на ЖИВИТЕ байтове. -->
+    <section class="sheet" id="file-info" role="dialog" aria-modal="true" aria-labelledby="file-info-title"
+      hidden>
+      <div class="sheet-card">
+        <div class="panel-head">
+          <h2 id="file-info-title">Информация за файл</h2>
+          <button type="button" id="file-info-close" class="btn btn-ghost btn-sm">Затвори</button>
+        </div>
+        <p id="file-info-name" class="file-name"></p>
+        <section class="fi-block" aria-labelledby="fi-general-title">
+          <h3 id="fi-general-title">Обща информация</h3>
+          <dl id="fi-general" class="info-list"></dl>
+        </section>
+        <section class="fi-block" aria-labelledby="fi-integrity-title">
+          <h3 id="fi-integrity-title">Цялост и отпечатък</h3>
+          <dl id="fi-integrity" class="info-list"></dl>
+          <p id="fi-hash" class="file-hash mono"></p>
+          <button type="button" id="fi-verify" class="btn btn-primary">Провери отпечатъка</button>
+          <p id="fi-result" class="status" role="status" aria-live="polite" hidden></p>
+        </section>
+      </div>
+    </section>
   </main>
+
+  <!-- Бързата лента: същите действия, на една ръка разстояние (без декорация). -->
+  <nav class="footbar" id="footbar" aria-label="Бързи действия">
+    <button type="button" id="bar-top" class="bar-btn">Начало</button>
+    <button type="button" id="bar-search" class="bar-btn">Търси</button>
+    <button type="button" id="bar-info" class="bar-btn">Инфо</button>
+    <button type="button" id="bar-manifest" class="bar-btn">Манифест</button>
+  </nav>
 
   <footer class="foot">
     <div class="wrap">

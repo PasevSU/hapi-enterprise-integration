@@ -31,13 +31,27 @@ const MAX_LISTED = 500;
 let folderRel = null;
 let folderFiles = [];
 let folderSubs = [];
+// Дървото на портала (зарежда се веднъж) и дали списъкът показва ВСИЧКИ нива.
+let treeRoot = null;
+let showAll = false;
 let portal = null;
 let allFiles = [];
 // Профил на съдържанието — всички текстове на страницата се извеждат от него.
 let prof = null;
+// Дали бързата лента е вързана (веднъж за живота на страницата).
+let barWired = false;
 
+// Стойността на търсенето — празна, когато страницата няма поле за търсене.
+const qValue = () => {
+  const q = $("q");
+  return q ? q.value : "";
+};
+
+// Единствената точка, която пише в лентата за състояние. Липсващият възел (страница на отказ,
+// файл, 410) не е грешка на данните — тогава просто няма къде да се пише, а не се пада.
 const setStatus = (text, kind) => {
   const el = $("status");
+  if (!el) return;
   el.textContent = text || "";
   el.hidden = !text;
   el.dataset.kind = kind || "";
@@ -159,12 +173,16 @@ function applyWording(p) {
   // Търсенето се показва само когато има какво да се търси, а подсказката —
   // само по полетата, които наистина съществуват в тези файлове.
   $("toolbar").hidden = p.total <= 3;
-  $("q").placeholder = p.hasTags
-    ? "Търси по име, тема, категория или етикет"
-    : p.hasTax
-      ? "Търси по име, тема или категория"
-      : "Търси по име";
-  $("q-label").textContent = $("q").placeholder;
+  const qEl = $("q");
+  if (qEl) {
+    qEl.placeholder = p.hasTags
+      ? "Търси по име, тема, категория или етикет"
+      : p.hasTax
+        ? "Търси по име, тема или категория"
+        : "Търси по име";
+    const label = $("q-label");
+    if (label) label.textContent = qEl.placeholder;
+  }
 
   // QR кодът НЕ се показва на самата страница: посетителят вече е тук, а кодът води точно
   // до тази страница. За споделяне има бутон „Копирай адреса“, който дава същия адрес.
@@ -364,6 +382,17 @@ function fileCard(file) {
     btn.addEventListener("click", () => downloadFile(file, ""));
     actions.append(btn);
   }
+  if (file.accessMode !== "DISABLED") {
+    // Същото съдържание като лист: подробности и сверка на отпечатъка без сваляне.
+    const infoBtn = document.createElement("button");
+    infoBtn.type = "button";
+    infoBtn.className = "btn btn-ghost btn-sm";
+    infoBtn.title = "Информация за файла";
+    infoBtn.setAttribute("aria-label", "Информация за " + file.name);
+    infoBtn.append(icon("file"), document.createTextNode(" Инфо"));
+    infoBtn.addEventListener("click", () => openFileInfo(file));
+    actions.append(infoBtn);
+  }
   li.append(actions);
   return li;
 }
@@ -441,9 +470,17 @@ async function loadFolder(rel) {
     folderRel = String(rel || "");
     folderFiles = data.files.map((f) => ({ name: f.name, path: f.path, size: f.size, modifiedAt: f.modifiedAt }));
     folderSubs = Array.isArray(data.folders) ? data.folders.map((f) => ({ name: f.name, path: f.path })) : [];
+    // Ново ниво → старото дърво и режимът „всичко“ не важат вече.
+    treeRoot = null;
+    showAll = false;
+    const allBtn = $("tree-all");
+    if (allBtn) {
+      allBtn.hidden = false;
+      allBtn.textContent = "Покажи всичко";
+    }
     const head = $("files-title");
     if (head) head.textContent = "Папка /" + (folderRel ? folderRel + "/" : "");
-    paint($("q").value);
+    paint(qValue());
     setStatus("");
     return true;
   } catch {
@@ -496,24 +533,313 @@ async function downloadFolderFile(rel) {
  */
 async function toggleFolder() {
   const btn = $("folder-open");
+  const allBtn = $("tree-all");
   if (folderRel !== null) {
     folderRel = null;
     folderFiles = [];
     folderSubs = [];
+    // Няма папка → няма и дърво за разгъване.
+    treeRoot = null;
+    showAll = false;
+    if (allBtn) allBtn.hidden = true;
     if (btn) btn.textContent = "Отвори папката";
     const head = $("files-title");
     if (head) head.textContent = prof && prof.total ? prof.noun.capMany : "Съдържание";
-    paint($("q").value);
+    paint(qValue());
     return;
   }
   const ok = await loadFolder("");
   if (ok && btn) btn.textContent = "Регистрирани файлове";
 }
 
+// ── Цялото дърво на портала (0.69.209) ────────────────────────────────────
+// Порталът може да има папки в папки. За да не се рови папка по папка, дървото се обхожда
+// с едни и същи заявки (`/tree?path=`) до дълбочината, която сървърът разрешава (3 нива),
+// и се показва наведнъж, групирано по папка.
+
+/** Обхожда дървото от корена на портала. Пази се веднъж — повторното натискане не пита. */
+async function loadWholeTree() {
+  if (treeRoot) return treeRoot;
+  const MAX_DEPTH = 3; // договорът на сървъра: корен + 3 подпапки
+  const fetchFolder = async (rel) => {
+    const res = await fetch(apiBase + "/tree?path=" + encodeURIComponent("/" + rel), {
+      headers: authHeaders(),
+      referrerPolicy: "no-referrer",
+    });
+    if (!res.ok) return null;
+    const data = await res.json().catch(() => null);
+    if (!data || !Array.isArray(data.files)) return null;
+    return {
+      path: rel,
+      files: data.files.map((f) => ({ name: f.name, path: f.path, size: f.size, modifiedAt: f.modifiedAt })),
+      folders: (data.folders || []).map((f) => ({
+        name: f.name,
+        path: String(f.path || "").replace(/^\/+/, ""),
+        files: [],
+        folders: [],
+      })),
+    };
+  };
+  const walk = async (node, depth) => {
+    if (depth >= MAX_DEPTH || !node.folders.length) return;
+    for (const child of node.folders) {
+      const full = await fetchFolder(child.path);
+      if (!full) continue;
+      child.files = full.files;
+      child.folders = full.folders;
+      await walk(child, depth + 1);
+    }
+  };
+  const root = await fetchFolder("");
+  if (!root) return null;
+  await walk(root, 0);
+  treeRoot = root;
+  return treeRoot;
+}
+
+/** Файловете от ЦЯЛОТО дърво (за брояча в режим „покажи всичко“). */
+function treeFilesAll(node) {
+  const root = node || treeRoot;
+  if (!root) return [];
+  const out = [];
+  const walk = (n) => {
+    for (const f of n.files || []) out.push(f);
+    for (const child of n.folders || []) walk(child);
+  };
+  walk(root);
+  return out;
+}
+
+/** Редовете на „покажи всичко“: заглавие на папка, после файловете в нея. */
+function paintAllRows() {
+  const rows = [];
+  const walk = (node) => {
+    const files = node.files || [];
+    if (files.length) {
+      const head = document.createElement("li");
+      head.className = "tree-group";
+      const title = document.createElement("h3");
+      title.textContent = node.path ? "/" + node.path : "Коренът на портала";
+      head.append(title);
+      rows.push(head);
+      for (const f of files) rows.push(folderFileCard(f));
+    }
+    for (const child of node.folders || []) walk(child);
+  };
+  if (treeRoot) walk(treeRoot);
+  return rows;
+}
+
+/** Числата на портала: смятат се от заредените данни и НЕ се пишат в HTML. */
+function paintStats() {
+  // В режим „папка“ списъкът е смесен: файловете от диска ПЛЮС регистрираните, които не са
+  // в папката. В режим „покажи всичко“ се брои ЦЯЛОТО дърво — иначе картата казва едно,
+  // а списъкът показва друго.
+  let files = allFiles.length;
+  if (folderRel !== null && showAll) files = treeFilesAll().length + allFiles.length;
+  else if (folderRel !== null) {
+    const onDisk = new Set(folderFiles.map((f) => f.name));
+    files = folderFiles.length + allFiles.filter((f) => !onDisk.has(f.name)).length;
+  }
+  const hash = allFiles.filter((f) => f.sha256).length;
+  const key = allFiles.filter((f) => f.accessMode === "KEY_REQUIRED").length;
+  const set = (id, value) => {
+    const el = $(id);
+    if (el) el.textContent = String(value);
+  };
+  set("stat-files", files);
+  set("stat-folders", folderRel !== null ? folderSubs.length : 0);
+  set("stat-hash", hash);
+  set("stat-key", key);
+}
+
+/** Статус на достъпа: състояние и броячи по режим на файловете. */
+function paintAccess(data) {
+  const state = $("access-state");
+  const list = $("access-list");
+  if (!state || !list) return;
+  const total = prof ? prof.total : allFiles.length;
+  const free = allFiles.filter((f) => !f.accessMode || f.accessMode === "FREE").length;
+  const key = allFiles.filter((f) => f.accessMode === "KEY_REQUIRED").length;
+  const disabled = allFiles.filter((f) => f.accessMode === "DISABLED").length;
+  const isPublic = Boolean(data && data.visibility === "public");
+  state.textContent = isPublic ? "Публичен достъп" : "Достъп с ключ";
+  state.className = "chip " + (isPublic ? "chip-ok" : "chip-warn");
+  const items = [];
+  if (!total) items.push("Няма файлове — достъпът е само до описанието.");
+  else {
+    items.push("Без ключ: " + free);
+    if (key) items.push("С ключ: " + key);
+    if (disabled) items.push("Забранени: " + disabled);
+  }
+  list.replaceChildren(
+    ...items.map((value) => {
+      const li = document.createElement("li");
+      li.className = "chip";
+      li.textContent = value;
+      return li;
+    }),
+  );
+}
+
+/** Един ред „етикет: стойност“ в листа за ЕДИН файл. */
+function fiRow(list, label, value, opts) {
+  if (!list) return;
+  const dt = document.createElement("dt");
+  dt.textContent = label;
+  const dd = document.createElement("dd");
+  if (opts && opts.mono) dd.className = "mono";
+  if (isNode(value)) dd.append(value);
+  else dd.textContent = String(value == null || value === "" ? "—" : value);
+  list.append(dt, dd);
+}
+
+/** Лист с подробности за ЕДИН файл — на място, без отделна страница. */
+function openFileInfo(file) {
+  const box = $("file-info");
+  if (!box || !file) return;
+  const general = $("fi-general");
+  const integrity = $("fi-integrity");
+  if (general) general.replaceChildren();
+  if (integrity) integrity.replaceChildren();
+  const name = $("file-info-name");
+  if (name) name.textContent = file.name;
+  fiRow(general, "Размер", fmtSize(file.size));
+  const date = fmtDate(file.uploadedAt);
+  if (date) fiRow(general, "Качен на", date);
+  if (Number(file.version) > 1) fiRow(general, "Версия", String(file.version));
+  const tax = [file.topic, file.category, file.group].filter(Boolean).join(" · ");
+  if (tax) fiRow(general, "Класификация", tax);
+  fiRow(
+    general,
+    "Достъп",
+    file.accessMode === "KEY_REQUIRED" ? "с ключ" : file.accessMode === "DISABLED" ? "забранен" : "без ключ",
+  );
+  fiRow(integrity, "Алгоритъм", "SHA-256");
+  fiRow(integrity, "Криптиран", file.encrypted ? "Да" : "Не");
+  const hashEl = $("fi-hash");
+  if (hashEl) {
+    hashEl.textContent = file.sha256 ? "SHA-256 " + short(file.sha256, 32) : "Файлът няма записан отпечатък.";
+    hashEl.title = file.sha256 ? "SHA-256: " + file.sha256 : "";
+  }
+  const result = $("fi-result");
+  if (result) {
+    result.hidden = true;
+    result.textContent = "";
+    result.dataset.kind = "";
+  }
+  const btn = $("fi-verify");
+  if (btn) {
+    // Файл с ключ и забранен файл не се проверяват без ключ — бутонът се СКРИВА.
+    const canVerify = Boolean(file.sha256) && file.accessMode !== "KEY_REQUIRED" && file.accessMode !== "DISABLED";
+    btn.hidden = !canVerify;
+    btn.disabled = false;
+    btn.onclick = () => void verifyFile(file);
+  }
+  box.hidden = false;
+  const close = $("file-info-close");
+  if (close) close.focus();
+}
+
+/** Затваря листа с информацията за файла. */
+function closeFileInfo() {
+  const box = $("file-info");
+  if (box) box.hidden = true;
+}
+
+/** Сверка на отпечатъка на ЖИВИТЕ байтове: същият SHA-256, който би се свалил. */
+async function verifyFile(file) {
+  const result = $("fi-result");
+  const btn = $("fi-verify");
+  const say = (text, kind) => {
+    if (!result) return;
+    result.hidden = !text;
+    result.textContent = text || "";
+    result.dataset.kind = kind || "";
+  };
+  if (!(crypto && crypto.subtle && crypto.subtle.digest)) {
+    say("Сверката иска HTTPS: браузърът не дава SHA-256 извън защитен контекст.");
+    return;
+  }
+  if (btn) btn.disabled = true;
+  say("Сверявам отпечатъка на живите байтове…");
+  try {
+    const res = await fetch(apiBase + "/files/" + encodeURIComponent(file.id) + "/download", {
+      headers: authHeaders(),
+      referrerPolicy: "no-referrer",
+    });
+    if (!res.ok) {
+      say("Проверката не мина (HTTP " + res.status + ").", "err");
+      return;
+    }
+    const actual = await sha256Hex(await res.arrayBuffer());
+    if (actual === String(file.sha256 || "").toLowerCase()) say("Съвпадение: файлът не е променен.", "ok");
+    else say("ВНИМАНИЕ: отпечатъкът НЕ съвпада — файлът е променен.", "err");
+  } catch {
+    say("Проверката не мина — няма връзка или файлът не е достъпен.", "err");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+/** Бързата лента се връзва веднъж; всяко бутонче прави истинско действие. */
+function wireQuickBar() {
+  if (barWired) return;
+  barWired = true;
+  const top = $("bar-top");
+  if (top) top.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+  const search = $("bar-search");
+  if (search)
+    search.addEventListener("click", () => {
+      const q = $("q");
+      if (!q) return;
+      q.focus();
+      if (q.scrollIntoView) q.scrollIntoView({ block: "center" });
+    });
+  const api = $("bar-info");
+  if (api) api.addEventListener("click", () => void openInfo("api"));
+  const manifest = $("bar-manifest");
+  if (manifest) manifest.addEventListener("click", () => void openInfo("manifest"));
+  const close = $("file-info-close");
+  if (close) close.addEventListener("click", closeFileInfo);
+  // „Покажи всичко“ / „Само тази папка“: един бутон, който сменя обхвата на списъка.
+  const all = $("tree-all");
+  if (all)
+    all.addEventListener("click", () => {
+      void (async () => {
+        if (!showAll) {
+          setStatus("Зареждам цялото дърво…");
+          await loadWholeTree();
+        }
+        showAll = !showAll;
+        paint(qValue());
+      })();
+    });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeFileInfo();
+  });
+}
+
 /** Показва файловете, които отговарят на търсенето (по име, тема, категория, група). */
 function paint(filter) {
+  // Броячите и статусът на достъпа следват списъка: в режим „папка“ числата са други.
+  paintStats();
+  paintAccess(portal);
   const q = String(filter || "").trim().toLocaleLowerCase();
   const box = $("files");
+  const allBtn = $("tree-all");
+  if (allBtn && folderRel !== null) allBtn.textContent = showAll ? "Само тази папка" : "Покажи всичко";
+  // „Покажи всичко“: всички нива на портала наведнъж, групирани по папка.
+  if (folderRel !== null && showAll) {
+    const rows = paintAllRows();
+    box.replaceChildren(...rows);
+    $("empty").hidden = rows.length > 0;
+    if (!rows.length) $("empty").textContent = "Тази папка е празна.";
+    const all = treeFilesAll();
+    $("count").textContent = all.length + " " + nounFor(all.length, prof ? prof.noun : NOUNS.file);
+    if (rows.length) setStatus("");
+    return;
+  }
   // Режим „папка“: истинските файлове от папката на портала. Регистрираните остават втори
   // изглед — бутонът връща към тях, за да не се губи нищо, което издателят е обявил.
   if (folderRel !== null) {
@@ -523,8 +849,12 @@ function paint(filter) {
     box.replaceChildren(...rows);
     $("empty").hidden = rows.length > 0;
     if (!rows.length) $("empty").textContent = "Тази папка е празна.";
-    $("count").textContent = files.length + (files.length === 1 ? " файл" : " файла");
-    if (rows.length) setStatus("");
+    // Броят разделя файлове от папки: иначе една папка се чете като „1 файл“.
+    const parts = [files.length + (files.length === 1 ? " файл" : " файла")];
+    if (subs.length) parts.push("папки: " + subs.length);
+    $("count").textContent = parts.join(" · ");
+    if (!files.length && subs.length) setStatus("Файловете са в подпапките — има " + subs.length + ". Отвори папка, за да ги видиш.");
+    else if (rows.length) setStatus("");
     return;
   }
   const list = q
@@ -704,10 +1034,14 @@ function paintPortal(data) {
   const base = data.title || "Портал за документи";
   // Заглавието на раздела назовава артефактите само когато има такива.
   document.title = prof && prof.total ? base + " · " + prof.noun.for : base;
-  $("title").textContent = data.title || "Портал за документи";
+  const titleEl = $("title");
+  if (titleEl) titleEl.textContent = data.title || "Портал за документи";
   const desc = String(data.description || data.subject || "").trim();
-  $("description").textContent = desc;
-  $("description").hidden = !desc;
+  const descEl = $("description");
+  if (descEl) {
+    descEl.textContent = desc;
+    descEl.hidden = !desc;
+  }
 
   const badges = [];
   if (data.visibility === "public") badges.push(["Публичен", "chip-ok"]);
@@ -763,6 +1097,7 @@ function paintPortal(data) {
     if (manifestBtn) manifestBtn.addEventListener("click", () => void openInfo("manifest"));
     if (closeBtn) closeBtn.addEventListener("click", closeInfo);
   }
+  wireQuickBar();
   $("copy-link").addEventListener("click", () => copy(pageUrl(), "Адресът на портала е копиран."));
   // Копчето към ПАПКАТА: порталът е QR кодът, който води до файловете — затова страницата
   // има директен вход към папката на портала. Показва се, когато порталът има собствена
@@ -812,11 +1147,14 @@ function paintPortal(data) {
     }
   } catch (err) {
     setStatus(String(err && err.message ? err.message : err), "err");
-    $("title").textContent = "Порталът не е достъпен";
+    const titleEl = $("title");
+    if (titleEl) titleEl.textContent = "Порталът не е достъпен";
   }
 })();
 
-$("q").addEventListener("input", (e) => paint(e.target.value));
+// Частична страница може да няма поле за търсене — тогава няма какво да се връзва.
+const searchBox = $("q");
+if (searchBox) searchBox.addEventListener("input", (e) => paint(e.target.value));
 
 // PP-04: „Към файловете“ е бутон — мести фокуса върху списъка, без да пипа адреса.
 const skipButton = $("skip");
