@@ -61,8 +61,8 @@ project treats them differently:
 
 | Source | Examples (measured 2026-11-15) | What the project does |
 | --- | --- | --- |
-| Packages bundled **with npm** in the official `node:*` image | `npm/tar 7.5.11` (2 critical), `npm/brace-expansion 2.0.2`, `npm/ip-address 10.1.0` | **Removed from the image entirely.** The add-on has zero runtime npm dependencies, so the base is plain `alpine:3.24` and Node comes from the official musl tarball unpacked with `--exclude='*/npm' --exclude='*/npx' --exclude='*/corepack'`. Deleting npm in a later layer is *not* enough: the files stay in the layer history and keep being reported. |
-| Alpine base packages | `alpine/zlib 1.3.2-r1` (CVE-2026-4738, critical), `alpine/musl 1.2.6-r3` (CVE-2026-107891, high), `alpine/openssl 3.5.9-r0` (5 unscored) — all reported **fixable** by Scout, measured 2026-11-15 in the `alpine:3.24.4` minirootfs layer | Raised to the repository versions at build time. Step 1 of the Dockerfile is `apk upgrade --no-cache --available`: `--available` matters, because without it `apk upgrade` skips packages whose origin group changed between Alpine releases — which is exactly how the zlib/musl/openssl fixes are published. The installed versions are printed into the build log (`apk info -v zlib musl openssl libssl3 libcrypto3`), so a rebuild shows what actually entered the image. |
+| Packages bundled **with npm** in the official `node:*` image | `npm/tar 7.5.11` (2 critical), `npm/brace-expansion 2.0.2`, `npm/ip-address 10.1.0` | **Never reach the final image.** The build is two-staged: `node:22.23.2-alpine` is stage 1 and only `/usr/local/bin/node` is copied to the plain `alpine:3.24` stage 2, so npm, npx, corepack and `node_modules` stay in the discarded stage. Verified in the built image: `npm: няма · npx: няма · corepack: няма`. |
+| Alpine base packages | `alpine/zlib 1.3.2-r1` → **fixed** (image ships `zlib-1.4-r0`); `alpine/musl 1.2.6-r3` and `alpine/openssl 3.5.9-r0` → **no newer version in the v3.24 repository yet** (`apk policy` reports only the installed version) | Step 1 is `apk upgrade --no-cache --available`. `--available` matters: without it `apk upgrade` skips packages whose origin group changed between Alpine releases — exactly how the `zlib` fix is published. The versions are printed into the build log and can be checked with `docker run --rm <image> apk info -v`. For musl/openssl the fix simply does not exist in this branch yet: the moment Alpine publishes it, the next rebuild picks it up with no code change. |
 | The Node runtime itself | `node 22.23.2` (high, fixable) | Fixed by bumping `ARG NODE_VERSION` in `hapi_enterprise/Dockerfile`. The version is pinned on purpose — a floating tag would make the release non-reproducible. |
 
 Scout has two screens and they answer different questions. The **base image page**
@@ -83,5 +83,8 @@ if npm comes back into the image or if the base stops being a plain Alpine.
 
 If a base-package finding survives a rebuild — which happens when the fixed version ships only
 in a newer Alpine minor, not in a patch of the current one — the single-line fix is the `FROM`
-line: `FROM alpine:3.2X`. The tests accept any `alpine:<major>.<minor>` tag on purpose, so the
-bump does not need a code change anywhere else.
+line: `FROM alpine:3.2X`. The final stage is matched with `/^alpine:\d+\.\d+$/` on purpose, so
+the bump does not need a code change anywhere else. Measured 2026-11-15: `alpine:3.25` does
+**not exist yet** (`docker pull alpine:3.25` → `not found`), so for `musl 1.2.6-r3` and
+`openssl 3.5.9-r0` there is nothing to upgrade to at this moment — the finding is upstream, not
+a missing step in this Dockerfile.
