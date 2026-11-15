@@ -4,6 +4,9 @@
   "after_dependencies": [
     "hassio"
   ],
+  "categories": [
+    "productivity_information.documents_photos"
+  ],
   "codeowners": [
     "@PasevSU"
   ],
@@ -19,5 +22,5 @@
     "hapi_enterprise"
   ],
   "requirements": [],
-  "version": "0.69.209"
+  "version": "0.69.211"
 }

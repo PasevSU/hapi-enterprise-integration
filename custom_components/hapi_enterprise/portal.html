@@ -7,7 +7,7 @@
   <meta name="robots" content="noindex,nofollow" />
   <meta name="referrer" content="no-referrer" />
   <meta name="color-scheme" content="light dark" />
-  <title>Портал за документи</title>
+  <title data-i18n="doc.title">Портал за документи</title>
   <link rel="stylesheet" href="/api/hapi_enterprise/assets/portal.css" />
 </head>
 
@@ -18,20 +18,29 @@
     <div class="wrap">
       <p class="eyebrow">
         <span class="dot" aria-hidden="true"></span>
-        <span id="visibility">Портал за документи</span>
+        <span id="visibility" data-i18n="doc.title">Портал за документи</span>
       </p>
-      <h1 id="title">Зареждане…</h1>
+      <h1 id="title" data-i18n="doc.loading">Зареждане…</h1>
       <p id="description" class="lead" hidden></p>
-      <ul id="badges" class="badges" aria-label="Категории"></ul>
+      <ul id="badges" class="badges" data-i18n-aria="header.categories" aria-label="Категории"></ul>
       <p id="contact" class="contact" hidden></p>
       <div class="hero-actions">
-        <button type="button" id="copy-link" class="btn btn-ghost">Копирай адреса</button>
-        <button type="button" id="folder-open" class="btn btn-ghost" hidden>Отвори папката</button>
+        <button type="button" id="copy-link" class="btn btn-ghost" data-i18n="header.copyLink">Копирай адреса</button>
+        <button type="button" id="folder-open" class="btn btn-ghost" data-i18n="header.folder" hidden>Отвори папката</button>
         <!-- PP-04: „API“ и „Манифест“ не водят навън — разгъват информацията в самата страница. -->
         <button type="button" id="api-open" class="btn btn-ghost" aria-controls="doc-info"
-          aria-expanded="false">API</button>
+          aria-expanded="false" data-i18n="header.api">API</button>
         <button type="button" id="manifest-open" class="btn btn-ghost" aria-controls="doc-info"
-          aria-expanded="false">Манифест</button>
+          aria-expanded="false" data-i18n="header.manifest">Манифест</button>
+        <!-- PP-14: езикът е избор на посетителя, не на издателя — речникът е същият като в add-on-а. -->
+        <label class="lang">
+          <span class="sr-only" data-i18n="lang.label">Език</span>
+          <select id="lang" class="lang-select" data-i18n-aria="lang.label" aria-label="Език">
+            <option value="bg">Български</option>
+            <option value="en">English</option>
+            <option value="de">Deutsch</option>
+          </select>
+        </label>
       </div>
     </div>
   </header>
@@ -39,28 +48,28 @@
   <main class="wrap" id="main">
     <!-- МОБИЛНА КОРА (PP-15): същата като в add-on варианта, за да не се разминават двата
          портала. Числата се смятат от данните — тук няма нито едно написано число. -->
-    <section class="stats" id="stats" aria-label="Порталът в числа">
+    <section class="stats" id="stats" data-i18n-aria="stats.aria" aria-label="Порталът в числа">
       <div class="stat">
         <span class="stat-n" id="stat-files">0</span>
-        <span class="stat-l" id="stat-files-label">Файлове</span>
+        <span class="stat-l" id="stat-files-label" data-i18n="stats.files">Файлове</span>
       </div>
       <div class="stat">
         <span class="stat-n" id="stat-folders">0</span>
-        <span class="stat-l" id="stat-folders-label">Папки</span>
+        <span class="stat-l" id="stat-folders-label" data-i18n="stats.folders">Папки</span>
       </div>
       <div class="stat">
         <span class="stat-n" id="stat-hash">0</span>
-        <span class="stat-l" id="stat-hash-label">С отпечатък</span>
+        <span class="stat-l" id="stat-hash-label" data-i18n="stats.hash">С отпечатък</span>
       </div>
       <div class="stat">
         <span class="stat-n" id="stat-key">0</span>
-        <span class="stat-l" id="stat-key-label">С ключ</span>
+        <span class="stat-l" id="stat-key-label" data-i18n="stats.key">С ключ</span>
       </div>
     </section>
 
     <section class="panel access-card" id="access-card" aria-labelledby="access-title">
       <div class="panel-head">
-        <h2 id="access-title">Статус на достъпа</h2>
+        <h2 id="access-title" data-i18n="access.title">Статус на достъпа</h2>
         <span id="access-state" class="chip chip-ok">Публичен достъп</span>
       </div>
       <ul id="access-list" class="summary-list"></ul>
@@ -69,7 +78,7 @@
     <section class="panel doc-info" id="doc-info" aria-labelledby="doc-info-title" hidden>
       <div class="panel-head">
         <h2 id="doc-info-title"></h2>
-        <button type="button" id="doc-info-close" class="btn btn-ghost btn-sm">Затвори</button>
+        <button type="button" id="doc-info-close" class="btn btn-ghost btn-sm" data-i18n="fileinfo.close">Затвори</button>
       </div>
       <p id="doc-info-note" class="hint"></p>
       <p id="doc-info-status" class="status" role="status" aria-live="polite" hidden></p>
@@ -78,19 +87,20 @@
 
     <section class="panel" aria-labelledby="files-title">
       <div class="panel-head">
-        <h2 id="files-title">Файлове</h2>
+        <h2 id="files-title" data-i18n="files.title">Файлове</h2>
         <span id="count" class="count" aria-live="polite"></span>
         <!-- Цялото дърво: текущото ниво по подразбиране, но с ЕДНО натискане се виждат
              ВСИЧКИ папки и файлове. Появява се само когато порталът има собствена папка. -->
-        <button type="button" id="tree-all" class="btn btn-ghost btn-sm" hidden>Покажи всичко</button>
+        <button type="button" id="tree-all" class="btn btn-ghost btn-sm" data-i18n="tree.all" hidden>Покажи всичко</button>
       </div>
       <div class="toolbar" id="toolbar">
         <label class="search">
-          <span class="sr-only" id="q-label">Търси по име, тема или категория</span>
-          <input id="q" type="search" placeholder="Търси по име, тема или категория" autocomplete="off" />
+          <span class="sr-only" id="q-label" data-i18n="files.search.placeholder.tax">Търси по име, тема или категория</span>
+          <input id="q" type="search" data-i18n-placeholder="files.search.placeholder.tax"
+            placeholder="Търси по име, тема или категория" autocomplete="off" />
         </label>
       </div>
-      <p id="status" class="status" role="status" aria-live="polite">Зареждане…</p>
+      <p id="status" class="status" role="status" aria-live="polite" data-i18n="doc.loading">Зареждане…</p>
       <ul id="files" class="files"></ul>
       <p id="empty" class="empty" hidden>Няма достъпни файлове за показване.</p>
       <p id="more" class="more" hidden></p>
@@ -102,19 +112,19 @@
       hidden>
       <div class="sheet-card">
         <div class="panel-head">
-          <h2 id="file-info-title">Информация за файл</h2>
-          <button type="button" id="file-info-close" class="btn btn-ghost btn-sm">Затвори</button>
+          <h2 id="file-info-title" data-i18n="fileinfo.title">Информация за файл</h2>
+          <button type="button" id="file-info-close" class="btn btn-ghost btn-sm" data-i18n="fileinfo.close">Затвори</button>
         </div>
         <p id="file-info-name" class="file-name"></p>
         <section class="fi-block" aria-labelledby="fi-general-title">
-          <h3 id="fi-general-title">Обща информация</h3>
+          <h3 id="fi-general-title" data-i18n="fileinfo.general">Обща информация</h3>
           <dl id="fi-general" class="info-list"></dl>
         </section>
         <section class="fi-block" aria-labelledby="fi-integrity-title">
-          <h3 id="fi-integrity-title">Цялост и отпечатък</h3>
+          <h3 id="fi-integrity-title" data-i18n="fileinfo.integrity">Цялост и отпечатък</h3>
           <dl id="fi-integrity" class="info-list"></dl>
           <p id="fi-hash" class="file-hash mono"></p>
-          <button type="button" id="fi-verify" class="btn btn-primary">Провери отпечатъка</button>
+          <button type="button" id="fi-verify" class="btn btn-primary" data-i18n="fileinfo.verify">Провери отпечатъка</button>
           <p id="fi-result" class="status" role="status" aria-live="polite" hidden></p>
         </section>
       </div>
@@ -122,11 +132,11 @@
   </main>
 
   <!-- Бързата лента: същите действия, на една ръка разстояние (без декорация). -->
-  <nav class="footbar" id="footbar" aria-label="Бързи действия">
-    <button type="button" id="bar-top" class="bar-btn">Начало</button>
-    <button type="button" id="bar-search" class="bar-btn">Търси</button>
-    <button type="button" id="bar-info" class="bar-btn">Инфо</button>
-    <button type="button" id="bar-manifest" class="bar-btn">Манифест</button>
+  <nav class="footbar" id="footbar" data-i18n-aria="bar.aria" aria-label="Бързи действия">
+    <button type="button" id="bar-top" class="bar-btn" data-i18n="bar.top">Начало</button>
+    <button type="button" id="bar-search" class="bar-btn" data-i18n="bar.search">Търси</button>
+    <button type="button" id="bar-info" class="bar-btn" data-i18n="fileinfo.open">Инфо</button>
+    <button type="button" id="bar-manifest" class="bar-btn" data-i18n="header.manifest">Манифест</button>
   </nav>
 
   <footer class="foot">
@@ -136,6 +146,10 @@
     </div>
   </footer>
 
+  <!-- Речникът (BG/EN/DE) е СЪЩИЯТ файл като в add-on портала — едни текстове за двете
+       страници. Сервира се като asset от интеграцията, така че страницата остава без
+       външни ресурси (CSP `script-src 'self'`). -->
+  <script src="/api/hapi_enterprise/assets/portal-i18n.js" defer></script>
   <script src="/api/hapi_enterprise/assets/portal.js" defer></script>
 </body>
 

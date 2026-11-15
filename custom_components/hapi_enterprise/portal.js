@@ -12,6 +12,54 @@
 // `tests/portal-variants.cjs` пази точно това правило (и в двете копия на страницата).
 
 const $ = (id) => document.getElementById(id);
+
+// ── Език на страницата (PP-14) ───────────────────────────────────────────────
+// Речникът е СЪЩИЯТ файл като в add-on портала (`portal-i18n.js`, BG/EN/DE), сервиран от
+// интеграцията като asset — едни текстове за двете страници, без втори речник. Езикът идва
+// от адреса (`?lang=en`), после от запазения избор на посетителя, иначе от `lang` на самата
+// страница (български). Без речник (стар кеш) остават българските текстове от HTML —
+// страницата НЕ показва ключове вместо думи.
+const I18N = globalThis.HapiPortalI18n || null;
+const LANG_KEY = "hapi.portalLang";
+function resolveLang() {
+  const fromUrl = new URL(location.href).searchParams.get("lang");
+  if (I18N && I18N.isLang(fromUrl)) return I18N.pick(fromUrl);
+  try {
+    const saved = localStorage.getItem(LANG_KEY);
+    if (I18N && I18N.isLang(saved)) return I18N.pick(saved);
+  } catch {
+    // Няма хранилище (частен режим) — остава езикът от адреса или подразбирането.
+  }
+  const html = document.documentElement && document.documentElement.getAttribute("lang");
+  return I18N ? I18N.pick(html) : "bg";
+}
+let LANG = resolveLang();
+/**
+ * Текст по ключ със заместители (`{n}`, `{what}`, `{name}`, `{status}`). Без речник
+ * (стар кеш) връща ключа — тогава `applyLanguage()` не пипа статичния HTML, който е на
+ * български, а съобщенията от кода остават видими като ключове, не като празни места.
+ */
+const T = (key, vars) => (I18N ? I18N.t(LANG, key, vars) : key);
+
+/**
+ * Прилага езика: статичните текстове (`data-i18n*` в HTML) и — ако данните вече са
+ * заредени — преизвежда заглавието, изречението за съдържанието и списъка, за да не
+ * остане екранът на стария език до презареждане.
+ */
+function applyLanguage() {
+  if (I18N) I18N.apply(document, LANG);
+  else if (document.documentElement) document.documentElement.setAttribute("lang", LANG);
+  const select = $("lang");
+  if (select) select.value = LANG;
+  if (!portal) return;
+  // Профилът се строи НАНОВО: съществителните („файл/файла“, „Datei/Dateien“) идват от
+  // речника, тоест зависят от езика — иначе броячите остават на стария език.
+  prof = buildProfile(allFiles, portal);
+  paintPortal(portal);
+  applyWording(prof);
+  paint(qValue());
+}
+
 // Ключът на портала от адреса: /api/hapi_enterprise/portal/<id или slug>.
 const PORTAL_PATH = /^\/api\/hapi_enterprise\/portal\/([^/]+)\/?$/;
 const key = decodeURIComponent((location.pathname.match(PORTAL_PATH) || [])[1] || "").trim();
@@ -93,15 +141,12 @@ const kindOf = (name) => {
   return KIND_BY_EXT[ext] || "file";
 };
 
-/** Съществителни за всеки вид (български: 1 файл / 2 файла) — с форми за „за …“. */
+/** Резервни съществителни, ако речникът не се е заредил (стар кеш): страницата остава
+ * четима на български. Иначе формите идват от `portal-i18n.js` — за всеки вид и език. */
 const NOUNS = {
   file: { one: "файл", many: "файла", capMany: "Файлове", for: "файлове" },
-  doc: { one: "документ", many: "документа", capMany: "Документи", for: "документи" },
-  image: { one: "снимка", many: "снимки", capMany: "Снимки", for: "снимки" },
-  media: { one: "медиен файл", many: "медийни файла", capMany: "Медия", for: "медия" },
-  archive: { one: "архив", many: "архива", capMany: "Архиви", for: "архиви" },
-  mixed: { one: "файл", many: "файла", capMany: "Документи и снимки", for: "документи и снимки" },
 };
+const nounOf = (kind) => (I18N ? I18N.nouns(LANG)[kind] || I18N.nouns(LANG).file : NOUNS.file);
 const nounFor = (n, noun) => (n === 1 ? noun.one : noun.many);
 
 /**
@@ -138,7 +183,7 @@ function buildProfile(files, data) {
   return {
     total,
     key,
-    noun: NOUNS[key],
+    noun: nounOf(key),
     kinds,
     hasHash,
     allHash: total > 0 && files.every((f) => f.sha256),
@@ -159,15 +204,15 @@ function applyWording(p) {
   const hasFiles = p.total > 0;
 
   $("visibility").textContent = hasFiles
-    ? "Портал за " + noun.for
+    ? T("visibility.for", { what: noun.for })
     : p.isPublic
-      ? "Публичен портал"
-      : "Портал с ограничен достъп";
-  $("files-title").textContent = hasFiles ? noun.capMany : "Съдържание";
+      ? T("visibility.public")
+      : T("visibility.private");
+  $("files-title").textContent = hasFiles ? noun.capMany : T("files.title.other");
 
   // Прескачането към списъка има смисъл само когато има списък.
   const skip = $("skip");
-  skip.textContent = hasFiles ? "Към " + noun.for : "Към съдържанието";
+  skip.textContent = hasFiles ? T("nav.skip.files", { what: noun.for }) : T("nav.skip.content");
   skip.hidden = !hasFiles;
 
   // Търсенето се показва само когато има какво да се търси, а подсказката —
@@ -176,10 +221,10 @@ function applyWording(p) {
   const qEl = $("q");
   if (qEl) {
     qEl.placeholder = p.hasTags
-      ? "Търси по име, тема, категория или етикет"
+      ? T("files.search.placeholder.tags")
       : p.hasTax
-        ? "Търси по име, тема или категория"
-        : "Търси по име";
+        ? T("files.search.placeholder.tax")
+        : T("files.search.placeholder.plain");
     const label = $("q-label");
     if (label) label.textContent = qEl.placeholder;
   }
@@ -188,13 +233,13 @@ function applyWording(p) {
   // до тази страница. За споделяне има бутон „Копирай адреса“, който дава същия адрес.
 
   const details = [];
-  if (hasFiles) details.push(p.total + " " + nounFor(p.total, noun));
-  if (p.newest) details.push("обновено на " + fmtDate(p.newest.toISOString()));
-  details.push("съдържанието е собственост на издателя");
+  if (hasFiles) details.push(T("summary.chip.files", { n: p.total }));
+  if (p.newest) details.push(T("footer.updated", { date: fmtDate(p.newest.toISOString()) }));
+  details.push(T("footer.owner"));
   const strong = document.createElement("strong");
   strong.textContent = "hAPI Enterprise";
   $("foot-note").replaceChildren(
-    document.createTextNode("Порталът се обслужва от "),
+    document.createTextNode(T("footer.served")),
     strong,
     document.createTextNode(" · " + details.join(" · ") + "."),
   );
@@ -214,9 +259,9 @@ async function copy(value, okText) {
       document.execCommand("copy");
       ta.remove();
     }
-    setStatus(okText || "Копирано.", "ok");
+    setStatus(okText || T("copy.ok"), "ok");
   } catch {
-    setStatus("Копирането не е позволено от браузъра.", "err");
+    setStatus(T("copy.blocked"), "err");
   }
 }
 
@@ -258,17 +303,17 @@ async function sha256Hex(buffer) {
 
 /** Изтегляне: FREE → директно; KEY_REQUIRED → с ключ в X-File-Key. */
 async function downloadFile(file, key) {
-  setStatus("Изтегляне на „" + file.name + "“…");
+  setStatus(T("file.status.downloading", { name: file.name }));
   try {
     const headers = authHeaders(key ? { "X-File-Key": key } : {});
     const url = apiBase + "/files/" + encodeURIComponent(file.id) + "/download";
     const res = await fetch(url, { headers, referrerPolicy: "no-referrer" });
     if (res.status === 403) {
-      setStatus(key ? "Невалиден или изтекъл ключ за този файл." : "Нужен е ключ за този файл.", "err");
+      setStatus(key ? T("file.status.badKey") : T("file.status.needKey"), "err");
       return;
     }
     if (!res.ok) {
-      setStatus("Изтеглянето не бе успешно (HTTP " + res.status + ").", "err");
+      setStatus(T("file.status.http", { status: res.status }), "err");
       return;
     }
     const blob = await res.blob();
@@ -279,7 +324,7 @@ async function downloadFile(file, key) {
     if (expected) {
       if (crypto && crypto.subtle && crypto.subtle.digest) {
         if ((await sha256Hex(await blob.arrayBuffer())) !== expected) {
-          setStatus("ВНИМАНИЕ: SHA-256 НЕ съвпада — файлът е променен и НЕ е запазен.", "err");
+          setStatus(T("file.status.mismatch"), "err");
           return;
         }
         verdict = "ok";
@@ -295,12 +340,11 @@ async function downloadFile(file, key) {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
-    if (verdict === "ok") setStatus("SHA-256 съвпада — файлът е свален непроменен.", "ok");
-    else if (verdict === "noVerify")
-      setStatus("Свалени без сверка: браузърът не дава SHA-256 извън HTTPS (отвори портала по HTTPS, за да се сверява).");
-    else setStatus("Изтеглянето започна: " + file.name, "ok");
+    if (verdict === "ok") setStatus(T("file.status.verified"), "ok");
+    else if (verdict === "noVerify") setStatus(T("file.status.noVerify"));
+    else setStatus(T("file.status.started", { name: file.name }), "ok");
   } catch {
-    setStatus("Няма връзка със сървъра на портала.", "err");
+    setStatus(T("file.status.offline"), "err");
   }
 }
 
@@ -329,24 +373,24 @@ function fileCard(file) {
   if (Number(file.version) > 1) meta.append(metaItem("v", String(file.version)));
   const date = fmtDate(file.uploadedAt);
   if (date) meta.append(metaItem("", date));
-  if (file.encrypted) meta.append(metaItem("", "шифрован"));
-  if (file.accessMode === "KEY_REQUIRED") meta.append(metaItem("", "нужен е ключ"));
+  if (file.encrypted) meta.append(metaItem("", T("file.meta.encrypted")));
+  if (file.accessMode === "KEY_REQUIRED") meta.append(metaItem("", T("file.meta.key")));
   li.append(meta);
 
   if (file.sha256) {
     const hash = document.createElement("p");
     hash.className = "file-hash";
-    hash.title = "SHA-256: " + file.sha256;
+    hash.title = T("file.sha.title", { full: file.sha256 });
     const label = document.createElement("span");
     label.className = "mono";
-    label.textContent = "SHA-256 " + short(file.sha256, 16);
+    label.textContent = T("file.sha.label", { short: short(file.sha256, 16) });
     const copyBtn = document.createElement("button");
     copyBtn.type = "button";
     copyBtn.className = "icon-btn";
-    copyBtn.title = "Копирай пълния SHA-256";
-    copyBtn.setAttribute("aria-label", "Копирай SHA-256 за " + file.name);
+    copyBtn.title = T("file.sha.copy");
+    copyBtn.setAttribute("aria-label", T("file.sha.copyFor", { name: file.name }));
     copyBtn.append(icon("copy"));
-    copyBtn.addEventListener("click", () => copy(file.sha256, "SHA-256 е копиран."));
+    copyBtn.addEventListener("click", () => copy(file.sha256, T("file.sha.copied")));
     hash.append(label, copyBtn);
     li.append(hash);
   }
@@ -356,19 +400,19 @@ function fileCard(file) {
   if (file.accessMode === "DISABLED") {
     const blocked = document.createElement("span");
     blocked.className = "chip chip-warn";
-    blocked.textContent = "Изтеглянето е забранено от издателя";
+    blocked.textContent = T("file.disabled");
     actions.append(blocked);
   } else if (file.accessMode === "KEY_REQUIRED") {
     const input = document.createElement("input");
     input.type = "password";
     input.autocomplete = "off";
     input.className = "key-input";
-    input.placeholder = "Ключ за файла";
-    input.setAttribute("aria-label", "Ключ за " + file.name);
+    input.placeholder = T("file.key.placeholder");
+    input.setAttribute("aria-label", T("file.key.aria", { name: file.name }));
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "btn btn-primary";
-    btn.append(icon("lock"), document.createTextNode(" Изтегли с ключ"));
+    btn.append(icon("lock"), document.createTextNode(T("file.download.key")));
     btn.addEventListener("click", () => downloadFile(file, input.value.trim()));
     input.addEventListener("keydown", (e) => {
       if (e.key === "Enter") downloadFile(file, input.value.trim());
@@ -378,7 +422,7 @@ function fileCard(file) {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "btn btn-primary";
-    btn.append(icon("download"), document.createTextNode(" Изтегли"));
+    btn.append(icon("download"), document.createTextNode(T("file.download")));
     btn.addEventListener("click", () => downloadFile(file, ""));
     actions.append(btn);
   }
@@ -387,9 +431,9 @@ function fileCard(file) {
     const infoBtn = document.createElement("button");
     infoBtn.type = "button";
     infoBtn.className = "btn btn-ghost btn-sm";
-    infoBtn.title = "Информация за файла";
-    infoBtn.setAttribute("aria-label", "Информация за " + file.name);
-    infoBtn.append(icon("file"), document.createTextNode(" Инфо"));
+    infoBtn.title = T("fileinfo.title");
+    infoBtn.setAttribute("aria-label", T("fileinfo.openFor", { name: file.name }));
+    infoBtn.append(icon("file"), document.createTextNode(" " + T("fileinfo.open")));
     infoBtn.addEventListener("click", () => openFileInfo(file));
     actions.append(infoBtn);
   }
@@ -443,7 +487,7 @@ function folderFileCard(file) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "btn btn-primary";
-  btn.append(icon("download"), document.createTextNode(" Изтегли"));
+  btn.append(icon("download"), document.createTextNode(T("file.download")));
   btn.addEventListener("click", () => { void downloadFolderFile(file.path); });
   actions.append(btn);
   li.append(actions);
@@ -452,19 +496,19 @@ function folderFileCard(file) {
 
 /** Зарежда папка от портала. `rel` е относителна на корена на портала. */
 async function loadFolder(rel) {
-  setStatus("Зареждам папката…");
+  setStatus(T("folder.loading"));
   try {
     const res = await fetch(apiBase + "/tree?path=" + encodeURIComponent("/" + rel), {
       headers: authHeaders(),
       referrerPolicy: "no-referrer",
     });
     if (!res.ok) {
-      setStatus("Папката не е достъпна (HTTP " + res.status + ").", "err");
+      setStatus(T("file.status.http", { status: res.status }), "err");
       return false;
     }
     const data = await res.json().catch(() => null);
     if (!data || !Array.isArray(data.files)) {
-      setStatus("Папката не може да се прочете.", "err");
+      setStatus(T("folder.error"), "err");
       return false;
     }
     folderRel = String(rel || "");
@@ -476,15 +520,15 @@ async function loadFolder(rel) {
     const allBtn = $("tree-all");
     if (allBtn) {
       allBtn.hidden = false;
-      allBtn.textContent = "Покажи всичко";
+      allBtn.textContent = T("tree.all");
     }
     const head = $("files-title");
-    if (head) head.textContent = "Папка /" + (folderRel ? folderRel + "/" : "");
+    if (head) head.textContent = T("folder.title", { path: "/" + (folderRel ? folderRel + "/" : "") });
     paint(qValue());
     setStatus("");
     return true;
   } catch {
-    setStatus("Няма връзка със сървъра на портала.", "err");
+    setStatus(T("file.status.offline"), "err");
     return false;
   }
 }
@@ -496,18 +540,18 @@ async function openFolder(rel) {
 
 /** Сваля файл от папката по ПЪТ (регистрираните файлове се свалят по id). */
 async function downloadFolderFile(rel) {
-  setStatus("Изтегляне на „" + rel + "“…");
+  setStatus(T("file.status.downloading", { name: rel }));
   try {
     const res = await fetch(apiBase + "/tree/file?path=" + encodeURIComponent("/" + rel), {
       headers: authHeaders(),
       referrerPolicy: "no-referrer",
     });
     if (res.status === 403) {
-      setStatus("Издателят е заключил този файл — отвори го през регистрираното копие.", "err");
+      setStatus(T("file.locked"), "err");
       return;
     }
     if (!res.ok) {
-      setStatus("Изтеглянето не бе успешно (HTTP " + res.status + ").", "err");
+      setStatus(T("file.status.http", { status: res.status }), "err");
       return;
     }
     const blob = await res.blob();
@@ -520,9 +564,9 @@ async function downloadFolderFile(rel) {
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
-    setStatus("Изтеглянето започна: " + name, "ok");
+    setStatus(T("file.status.started", { name }), "ok");
   } catch {
-    setStatus("Няма връзка със сървъра на портала.", "err");
+    setStatus(T("file.status.offline"), "err");
   }
 }
 
@@ -542,14 +586,14 @@ async function toggleFolder() {
     treeRoot = null;
     showAll = false;
     if (allBtn) allBtn.hidden = true;
-    if (btn) btn.textContent = "Отвори папката";
+    if (btn) btn.textContent = T("header.folder");
     const head = $("files-title");
-    if (head) head.textContent = prof && prof.total ? prof.noun.capMany : "Съдържание";
+    if (head) head.textContent = prof && prof.total ? prof.noun.capMany : T("files.title.other");
     paint(qValue());
     return;
   }
   const ok = await loadFolder("");
-  if (ok && btn) btn.textContent = "Регистрирани файлове";
+  if (ok && btn) btn.textContent = T("folder.registered");
 }
 
 // ── Цялото дърво на портала (0.69.209) ────────────────────────────────────
@@ -619,7 +663,7 @@ function paintAllRows() {
       const head = document.createElement("li");
       head.className = "tree-group";
       const title = document.createElement("h3");
-      title.textContent = node.path ? "/" + node.path : "Коренът на портала";
+      title.textContent = node.path ? "/" + node.path : T("tree.root");
       head.append(title);
       rows.push(head);
       for (const f of files) rows.push(folderFileCard(f));
@@ -663,14 +707,14 @@ function paintAccess(data) {
   const key = allFiles.filter((f) => f.accessMode === "KEY_REQUIRED").length;
   const disabled = allFiles.filter((f) => f.accessMode === "DISABLED").length;
   const isPublic = Boolean(data && data.visibility === "public");
-  state.textContent = isPublic ? "Публичен достъп" : "Достъп с ключ";
+  state.textContent = isPublic ? T("access.public.chip") : T("access.key.chip");
   state.className = "chip " + (isPublic ? "chip-ok" : "chip-warn");
   const items = [];
-  if (!total) items.push("Няма файлове — достъпът е само до описанието.");
+  if (!total) items.push(T("access.none"));
   else {
-    items.push("Без ключ: " + free);
-    if (key) items.push("С ключ: " + key);
-    if (disabled) items.push("Забранени: " + disabled);
+    items.push(T("access.free.count", { n: free }));
+    if (key) items.push(T("access.key.count", { n: key }));
+    if (disabled) items.push(T("access.disabled.count", { n: disabled }));
   }
   list.replaceChildren(
     ...items.map((value) => {
@@ -704,23 +748,23 @@ function openFileInfo(file) {
   if (integrity) integrity.replaceChildren();
   const name = $("file-info-name");
   if (name) name.textContent = file.name;
-  fiRow(general, "Размер", fmtSize(file.size));
+  fiRow(general, T("fileinfo.size"), fmtSize(file.size));
   const date = fmtDate(file.uploadedAt);
-  if (date) fiRow(general, "Качен на", date);
-  if (Number(file.version) > 1) fiRow(general, "Версия", String(file.version));
+  if (date) fiRow(general, T("fileinfo.date"), date);
+  if (Number(file.version) > 1) fiRow(general, T("fileinfo.version"), String(file.version));
   const tax = [file.topic, file.category, file.group].filter(Boolean).join(" · ");
-  if (tax) fiRow(general, "Класификация", tax);
+  if (tax) fiRow(general, T("fileinfo.taxonomy"), tax);
   fiRow(
     general,
-    "Достъп",
-    file.accessMode === "KEY_REQUIRED" ? "с ключ" : file.accessMode === "DISABLED" ? "забранен" : "без ключ",
+    T("fileinfo.mode"),
+    file.accessMode === "KEY_REQUIRED" ? T("file.meta.key") : file.accessMode === "DISABLED" ? T("access.disabled") : T("access.free"),
   );
-  fiRow(integrity, "Алгоритъм", "SHA-256");
-  fiRow(integrity, "Криптиран", file.encrypted ? "Да" : "Не");
+  fiRow(integrity, T("fileinfo.algorithm"), "SHA-256");
+  fiRow(integrity, T("fileinfo.encrypted"), file.encrypted ? T("fileinfo.yes") : T("fileinfo.no"));
   const hashEl = $("fi-hash");
   if (hashEl) {
-    hashEl.textContent = file.sha256 ? "SHA-256 " + short(file.sha256, 32) : "Файлът няма записан отпечатък.";
-    hashEl.title = file.sha256 ? "SHA-256: " + file.sha256 : "";
+    hashEl.textContent = file.sha256 ? T("file.sha.label", { short: short(file.sha256, 32) }) : T("fileinfo.noHash");
+    hashEl.title = file.sha256 ? T("file.sha.title", { full: file.sha256 }) : "";
   }
   const result = $("fi-result");
   if (result) {
@@ -758,25 +802,25 @@ async function verifyFile(file) {
     result.dataset.kind = kind || "";
   };
   if (!(crypto && crypto.subtle && crypto.subtle.digest)) {
-    say("Сверката иска HTTPS: браузърът не дава SHA-256 извън защитен контекст.");
+    say(T("fileinfo.noCrypto"));
     return;
   }
   if (btn) btn.disabled = true;
-  say("Сверявам отпечатъка на живите байтове…");
+  say(T("fileinfo.verifying"));
   try {
     const res = await fetch(apiBase + "/files/" + encodeURIComponent(file.id) + "/download", {
       headers: authHeaders(),
       referrerPolicy: "no-referrer",
     });
     if (!res.ok) {
-      say("Проверката не мина (HTTP " + res.status + ").", "err");
+      say(T("file.status.http", { status: res.status }), "err");
       return;
     }
     const actual = await sha256Hex(await res.arrayBuffer());
-    if (actual === String(file.sha256 || "").toLowerCase()) say("Съвпадение: файлът не е променен.", "ok");
-    else say("ВНИМАНИЕ: отпечатъкът НЕ съвпада — файлът е променен.", "err");
+    if (actual === String(file.sha256 || "").toLowerCase()) say(T("fileinfo.match"), "ok");
+    else say(T("fileinfo.mismatch"), "err");
   } catch {
-    say("Проверката не мина — няма връзка или файлът не е достъпен.", "err");
+    say(T("fileinfo.error"), "err");
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -808,7 +852,7 @@ function wireQuickBar() {
     all.addEventListener("click", () => {
       void (async () => {
         if (!showAll) {
-          setStatus("Зареждам цялото дърво…");
+          setStatus(T("tree.loading"));
           await loadWholeTree();
         }
         showAll = !showAll;
@@ -828,13 +872,13 @@ function paint(filter) {
   const q = String(filter || "").trim().toLocaleLowerCase();
   const box = $("files");
   const allBtn = $("tree-all");
-  if (allBtn && folderRel !== null) allBtn.textContent = showAll ? "Само тази папка" : "Покажи всичко";
+  if (allBtn && folderRel !== null) allBtn.textContent = showAll ? T("tree.level") : T("tree.all");
   // „Покажи всичко“: всички нива на портала наведнъж, групирани по папка.
   if (folderRel !== null && showAll) {
     const rows = paintAllRows();
     box.replaceChildren(...rows);
     $("empty").hidden = rows.length > 0;
-    if (!rows.length) $("empty").textContent = "Тази папка е празна.";
+    if (!rows.length) $("empty").textContent = T("folder.empty");
     const all = treeFilesAll();
     $("count").textContent = all.length + " " + nounFor(all.length, prof ? prof.noun : NOUNS.file);
     if (rows.length) setStatus("");
@@ -848,12 +892,12 @@ function paint(filter) {
     const rows = subs.map(folderRow).concat(files.map(folderFileCard));
     box.replaceChildren(...rows);
     $("empty").hidden = rows.length > 0;
-    if (!rows.length) $("empty").textContent = "Тази папка е празна.";
+    if (!rows.length) $("empty").textContent = T("folder.empty");
     // Броят разделя файлове от папки: иначе една папка се чете като „1 файл“.
-    const parts = [files.length + (files.length === 1 ? " файл" : " файла")];
-    if (subs.length) parts.push("папки: " + subs.length);
+    const parts = [T("file.count", { n: files.length, what: nounFor(files.length, nounOf("file")) })];
+    if (subs.length) parts.push(T("folder.count", { n: subs.length }));
     $("count").textContent = parts.join(" · ");
-    if (!files.length && subs.length) setStatus("Файловете са в подпапките — има " + subs.length + ". Отвори папка, за да ги видиш.");
+    if (!files.length && subs.length) setStatus(T("folder.onlyFolders", { n: subs.length }));
     else if (rows.length) setStatus("");
     return;
   }
@@ -870,17 +914,17 @@ function paint(filter) {
   if (!list.length) {
     // Различен текст за празен портал и за празно търсене.
     $("empty").textContent = allFiles.length
-      ? "Няма " + prof.noun.for + ", отговарящи на търсенето."
+      ? T("files.empty.filtered", { what: prof.noun.many })
       : prof.isPublic
-        ? "Порталът е публичен, но издателят още не е публикувал файлове."
-        : "Издателят още не е публикувал файлове в този портал.";
+        ? T("files.empty.public")
+        : T("files.empty.private");
   }
   const total = allFiles.length;
   $("count").textContent = !total
     ? ""
     : list.length === total
       ? total + " " + nounFor(total, prof.noun)
-      : list.length + " от " + total;
+      : list.length + " " + T("files.count.of") + " " + total;
   if (list.length || !total) setStatus("");
 }
 
@@ -921,20 +965,20 @@ function copyButton(value, label, okText) {
 function renderApiInfo() {
   const data = portal || {};
   const total = prof ? prof.total : allFiles.length;
-  const noun = prof ? prof.noun : { one: "файл", many: "файла" };
+  const noun = prof ? prof.noun : nounOf("file");
   const bytes = allFiles.reduce((sum, f) => sum + (Number(f.size) || 0), 0);
-  infoRow("Заглавие", data.title || "Портал за документи");
-  infoRow("Идентификатор", data.id || "", { mono: true });
-  infoRow("Адресно име (slug)", data.slug || "");
-  infoRow("Видимост", data.visibility === "public" ? "публичен" : "само с ключ");
-  infoRow("Съдържание", total + " " + nounFor(total, noun) + " · " + fmtSize(bytes));
+  infoRow(T("info.label.title"), data.title || T("doc.title"));
+  infoRow(T("info.label.id"), data.id || "", { mono: true });
+  infoRow(T("info.label.slug"), data.slug || "");
+  infoRow(T("info.label.visibility"), data.visibility === "public" ? T("access.public") : T("access.private"));
+  infoRow(T("info.label.content"), total + " " + nounFor(total, noun) + " · " + fmtSize(bytes));
   const c = data.contact || null;
   const who = c ? [c.name, c.organization, c.department].filter(Boolean).join(" · ") : "";
-  if (who) infoRow("Контакт", who);
+  if (who) infoRow(T("info.label.contact"), who);
   const created = fmtDate(data.createdAt);
-  if (created) infoRow("Създаден", created);
+  if (created) infoRow(T("info.label.created"), created);
   const updated = fmtDate(data.updatedAt);
-  if (updated) infoRow("Обновен", updated);
+  if (updated) infoRow(T("info.label.updated"), updated);
 }
 
 /** Манифест: сървърът дава пътища, размери и отпечатъци — показваме тях, не адреси. */
@@ -958,25 +1002,25 @@ async function renderManifestInfo() {
   if (!data || !Array.isArray(data.files)) {
     if (status) {
       status.hidden = false;
-      status.textContent = "Манифестът не може да се зареди сега.";
+      status.textContent = T("info.error");
     }
     return;
   }
   const storage = data.storage || {};
-  infoRow("Папки", Number(storage.folderCount) || 0);
-  infoRow("Файлове", Number(storage.fileCount) || data.files.length);
+  infoRow(T("info.label.folders"), Number(storage.folderCount) || 0);
+  infoRow(T("info.label.files"), Number(storage.fileCount) || data.files.length);
   for (const f of data.files) {
     const mode =
-      f.accessMode === "KEY_REQUIRED" ? "с ключ" : f.accessMode === "DISABLED" ? "изключен" : "свободен";
+      f.accessMode === "KEY_REQUIRED" ? T("access.key") : f.accessMode === "DISABLED" ? T("access.disabled") : T("access.free");
     const detail = document.createElement("span");
     detail.className = "info-value";
     detail.append(document.createTextNode([f.path || "", fmtSize(f.size), mode].filter(Boolean).join(" · ")));
     if (f.sha256) {
       const hash = document.createElement("code");
       hash.className = "mono";
-      hash.title = "SHA-256: " + f.sha256;
-      hash.textContent = "SHA-256 " + short(f.sha256, 16);
-      detail.append(document.createTextNode(" "), hash, copyButton(f.sha256, "Копирай SHA-256", "SHA-256 е копиран."));
+      hash.title = T("file.sha.title", { full: f.sha256 });
+      hash.textContent = T("file.sha.label", { short: short(f.sha256, 16) });
+      detail.append(document.createTextNode(" "), hash, copyButton(f.sha256, T("file.sha.copy"), T("file.sha.copied")));
     }
     infoRow(f.name || "", detail);
   }
@@ -1008,10 +1052,8 @@ async function openInfo(kind) {
   const manifestBtn = $("manifest-open");
   if (apiBtn) apiBtn.setAttribute("aria-expanded", isApi ? "true" : "false");
   if (manifestBtn) manifestBtn.setAttribute("aria-expanded", isApi ? "false" : "true");
-  $("doc-info-title").textContent = isApi ? "Информация за портала" : "Манифест на портала";
-  $("doc-info-note").textContent = isApi
-    ? "Това, което порталът казва за себе си — без адреси за копиране и без суров JSON."
-    : "Манифестът изрежда път, размер, достъп и SHA-256 на всеки файл. Съдържание не се показва.";
+  $("doc-info-title").textContent = isApi ? T("info.api.title") : T("info.manifest.title");
+  $("doc-info-note").textContent = isApi ? T("info.api.note") : T("info.manifest.note");
   const status = $("doc-info-status");
   if (status) {
     status.hidden = true;
@@ -1023,7 +1065,7 @@ async function openInfo(kind) {
   else {
     if (status) {
       status.hidden = false;
-      status.textContent = "Зареждам манифеста…";
+      status.textContent = T("info.loading");
     }
     await renderManifestInfo();
   }
@@ -1031,11 +1073,11 @@ async function openInfo(kind) {
 }
 
 function paintPortal(data) {
-  const base = data.title || "Портал за документи";
+  const base = data.title || T("doc.title");
   // Заглавието на раздела назовава артефактите само когато има такива.
   document.title = prof && prof.total ? base + " · " + prof.noun.for : base;
   const titleEl = $("title");
-  if (titleEl) titleEl.textContent = data.title || "Портал за документи";
+  if (titleEl) titleEl.textContent = data.title || T("doc.title");
   const desc = String(data.description || data.subject || "").trim();
   const descEl = $("description");
   if (descEl) {
@@ -1044,10 +1086,10 @@ function paintPortal(data) {
   }
 
   const badges = [];
-  if (data.visibility === "public") badges.push(["Публичен", "chip-ok"]);
+  if (data.visibility === "public") badges.push([T("badge.public"), "chip-ok"]);
   if (data.category) badges.push([data.category, ""]);
   if (data.flag && data.flag !== "none") {
-    const label = { info: "информация", important: "важно", urgent: "спешно", archive: "архив" }[data.flag] || data.flag;
+    const label = { info: T("flag.info"), important: T("flag.important"), urgent: T("flag.urgent"), archive: T("flag.archive") }[data.flag] || data.flag;
     badges.push([label, data.flag === "urgent" ? "chip-err" : "chip-warn"]);
   }
   const ul = $("badges");
@@ -1071,7 +1113,7 @@ function paintPortal(data) {
       mail.type = "button";
       mail.className = "link-btn";
       mail.textContent = c.email;
-      mail.title = "Пиши на този адрес";
+      mail.title = T("contact.mail");
       mail.addEventListener("click", () => { location.href = "mailto:" + c.email; });
       el.append(document.createTextNode(parts ? " · " : ""), mail);
     }
@@ -1080,7 +1122,7 @@ function paintPortal(data) {
       tel.type = "button";
       tel.className = "link-btn";
       tel.textContent = c.phone;
-      tel.title = "Обади се на този номер";
+      tel.title = T("contact.tel");
       tel.addEventListener("click", () => { location.href = "tel:" + c.phone.replace(/[^+0-9]/g, ""); });
       el.append(document.createTextNode(c.email || parts ? " · " : ""), tel);
     }
@@ -1098,7 +1140,7 @@ function paintPortal(data) {
     if (closeBtn) closeBtn.addEventListener("click", closeInfo);
   }
   wireQuickBar();
-  $("copy-link").addEventListener("click", () => copy(pageUrl(), "Адресът на портала е копиран."));
+  $("copy-link").addEventListener("click", () => copy(pageUrl(), T("header.copyLink.ok")));
   // Копчето към ПАПКАТА: порталът е QR кодът, който води до файловете — затова страницата
   // има директен вход към папката на портала. Показва се, когато порталът има собствена
   // папка (сървърът я обявява чрез `FOLDERS`).
@@ -1119,13 +1161,13 @@ function paintPortal(data) {
 
 (async () => {
   try {
-    if (!key) throw new Error("Липсва портал в адреса.");
+    if (!key) throw new Error(T("error.noPortal"));
     const [portalRes, filesRes] = await Promise.all([
       fetch(apiBase, { headers: authHeaders(), referrerPolicy: "no-referrer" }),
       fetch(apiBase + "/files?limit=" + MAX_LISTED, { headers: authHeaders(), referrerPolicy: "no-referrer" }),
     ]);
-    if (!portalRes.ok) throw new Error("Порталът не е наличен или достъпът изисква ключ.");
-    if (!filesRes.ok) throw new Error("Списъкът с файлове не е достъпен.");
+    if (!portalRes.ok) throw new Error(T("error.portal"));
+    if (!filesRes.ok) throw new Error(T("error.files"));
     portal = await portalRes.json();
     const listing = await filesRes.json();
     allFiles = Array.isArray(listing.files) ? listing.files : [];
@@ -1135,20 +1177,13 @@ function paintPortal(data) {
     paint("");
     if (listing.hasMore) {
       const more = $("more");
-      more.textContent =
-        "Показани са първите " +
-        MAX_LISTED +
-        " от " +
-        listing.total +
-        " " +
-        nounFor(listing.total, prof.noun) +
-        " — използвай търсенето или API-то за останалите.";
+      more.textContent = T("files.more", { shown: MAX_LISTED, total: listing.total, what: nounFor(listing.total, prof.noun) });
       more.hidden = false;
     }
   } catch (err) {
     setStatus(String(err && err.message ? err.message : err), "err");
     const titleEl = $("title");
-    if (titleEl) titleEl.textContent = "Порталът не е достъпен";
+    if (titleEl) titleEl.textContent = T("doc.unavailable");
   }
 })();
 
@@ -1169,3 +1204,23 @@ if (skipButton) {
     if (typeof target.scrollIntoView === "function") target.scrollIntoView({ block: "start" });
   });
 }
+
+// PP-14: изборът на език е на посетителя — помни се и се прилага веднага, без презареждане.
+// `applyLanguage()` се вика и при старт, за да дойде езикът от адреса/запазения избор, а не
+// само от `lang` на страницата.
+const langSelect = $("lang");
+if (langSelect) {
+  langSelect.value = LANG;
+  langSelect.addEventListener("change", (event) => {
+    const next = I18N && I18N.isLang(event.target.value) ? I18N.pick(event.target.value) : "bg";
+    if (next === LANG) return;
+    LANG = next;
+    try {
+      localStorage.setItem(LANG_KEY, LANG);
+    } catch {
+      // Частен режим без хранилище: изборът важи до затваряне на страницата.
+    }
+    applyLanguage();
+  });
+}
+applyLanguage();

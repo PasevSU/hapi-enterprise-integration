@@ -124,7 +124,7 @@ async def _forward(hass, request, url, headers, params, extra_headers=None, meth
 def _read_static_files() -> dict[str, str]:
     """Read the portal assets once, off the event loop (blocking I/O rule)."""
     base = Path(__file__).parent
-    return {name: (base / name).read_text(encoding="utf-8") for name in ("portal.html", "portal.js", "portal.css")}
+    return {name: (base / name).read_text(encoding="utf-8") for name in ("portal.html", "portal.js", "portal-i18n.js", "portal.css")}
 
 
 async def async_setup(hass, config):
@@ -157,7 +157,7 @@ async def async_setup(hass, config):
         requires_auth = False
 
         async def get(self, request, asset):
-            if asset not in ("portal.js", "portal.css"):
+            if asset not in ("portal.js", "portal-i18n.js", "portal.css"):
                 raise web.HTTPNotFound()
             content = static[asset]
             return web.Response(text=content, content_type="application/javascript" if asset.endswith(".js") else "text/css", headers={

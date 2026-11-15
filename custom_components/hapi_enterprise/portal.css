@@ -313,3 +313,21 @@ main { padding: 20px 0 8px; display: grid; gap: 16px; }
   font-size: 0.8rem;
   cursor: pointer;
 }
+
+/* PP-14: изборът на език е част от действията на хедъра, не отделна лента — същите
+   мерки като в add-on портала, за да не се разминават двете страници. */
+.lang {
+  display: inline-flex;
+  align-items: center;
+}
+
+.lang-select {
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.88rem;
+}

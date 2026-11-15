@@ -53,3 +53,35 @@ released.
   local data directory (Windows).
 - Expose the add-on only through Home Assistant ingress, not directly to the internet.
 - Keep Node.js 22.13+ and Home Assistant Supervisor up to date.
+
+## Container image and vulnerability scanning
+
+Docker Scout reports findings for the published image. They come from two places, and the
+project treats them differently:
+
+| Source | Examples (measured 2026-11-15) | What the project does |
+| --- | --- | --- |
+| Packages bundled **with npm** in the official `node:*` image | `npm/tar 7.5.11` (2 critical), `npm/brace-expansion 2.0.2`, `npm/ip-address 10.1.0` | **Removed from the image entirely.** The add-on has zero runtime npm dependencies, so the base is plain `alpine:3.24` and Node comes from the official musl tarball unpacked with `--exclude='*/npm' --exclude='*/npx' --exclude='*/corepack'`. Deleting npm in a later layer is *not* enough: the files stay in the layer history and keep being reported. |
+| Alpine base packages | `alpine/zlib 1.3.2-r1` (CVE-2026-4738, critical), `alpine/musl 1.2.6-r3` (CVE-2026-107891, high), `alpine/openssl 3.5.9-r0` (5 unscored) — all reported **fixable** by Scout, measured 2026-11-15 in the `alpine:3.24.4` minirootfs layer | Raised to the repository versions at build time. Step 1 of the Dockerfile is `apk upgrade --no-cache --available`: `--available` matters, because without it `apk upgrade` skips packages whose origin group changed between Alpine releases — which is exactly how the zlib/musl/openssl fixes are published. The installed versions are printed into the build log (`apk info -v zlib musl openssl libssl3 libcrypto3`), so a rebuild shows what actually entered the image. |
+| The Node runtime itself | `node 22.23.2` (high, fixable) | Fixed by bumping `ARG NODE_VERSION` in `hapi_enterprise/Dockerfile`. The version is pinned on purpose — a floating tag would make the release non-reproducible. |
+
+Scout has two screens and they answer different questions. The **base image page**
+(`alpine:3.24`, two layers: the minirootfs plus `CMD ["/bin/sh"]`) describes the distribution as
+published — no Dockerfile of ours can change those files in place, and its findings are the
+input, not the result. The **add-on image page** describes our build; there the `apk upgrade`
+layer replaces `zlib`, `musl` and `openssl` with the fixed versions, so the same CVEs come back
+as `N/A`/gone. When reading a screenshot, check which image it belongs to: a base-layer finding
+that is marked *fixable* is a finding our first build step already addresses.
+
+What is **not** claimed: that the image has zero findings. A scanner will always report
+findings in the base distribution and in the runtime; the measurable commitment is that no
+package the add-on does not use travels with it, that base packages are upgraded to the newest
+repository versions on every build, and that everything else is one pinned version bump away.
+`tests/docker-runtime.cjs` (plain Alpine base, no npm, `apk upgrade --available`, printed
+versions), `tests/raspberrypi-compat.cjs` and scenario S04 of `scripts/verify-release.cjs` fail
+if npm comes back into the image or if the base stops being a plain Alpine.
+
+If a base-package finding survives a rebuild — which happens when the fixed version ships only
+in a newer Alpine minor, not in a patch of the current one — the single-line fix is the `FROM`
+line: `FROM alpine:3.2X`. The tests accept any `alpine:<major>.<minor>` tag on purpose, so the
+bump does not need a code change anywhere else.
