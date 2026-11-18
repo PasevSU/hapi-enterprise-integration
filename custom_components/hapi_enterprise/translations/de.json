@@ -1,0 +1,173 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "hAPI Enterprise",
+        "description": "Verbindet sich mit der Admin-API des hAPI-Enterprise-Add-ons, um Telemetrie-Sensoren bereitzustellen.",
+        "data": {
+          "backend_url": "Admin-API-Adresse (z. B. http://hapi_enterprise:8099)",
+          "token": "Admin-Token",
+          "scan_interval": "Aktualisierungsintervall (Sekunden)",
+          "panel_url": "Panel-Adresse (optional)"
+        },
+        "data_description": {
+          "panel_url": "Adresse, die im Browser für das hAPI-Panel geöffnet wird. Leer lassen, um die API-Adresse mit /ui/ zu verwenden."
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Gib eine gültige http(s)-URL ein.",
+      "token_required": "Für die Ersteinrichtung ist ein Token erforderlich.",
+      "token_too_short": "Das Token ist zu kurz (mindestens 24 Zeichen).",
+      "token_too_long": "Das Token ist zu lang (höchstens 512 Zeichen).",
+      "invalid_scan_interval": "Das Intervall muss zwischen 10 und 86400 Sekunden liegen.",
+      "invalid_auth": "Das Add-on hat das Admin-Token abgelehnt.",
+      "cannot_connect": "Die Admin-API des Add-ons ist nicht erreichbar. Prüfe die URL und ob das Add-on läuft.",
+      "wrong_port": "Das ist der Ingress-Port (8098), den nur der Supervisor nutzen darf. Gib die öffentliche Adresse des Add-ons ein: http://hapi_enterprise:8099",
+      "addon_too_old": "Die Adresse antwortet, aber nicht die Admin-API. Das Add-on ist wahrscheinlich älter als 0.69.96 — aktualisiere es und versuche es erneut."
+    },
+    "abort": {
+      "already_configured": "Dieses Backend ist bereits eingerichtet."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Optionen von hAPI Enterprise",
+        "description": "Verbindungseinstellungen der Admin-API ändern. Token leer lassen, um den aktuellen Wert zu behalten.",
+        "data": {
+          "backend_url": "Admin-API-Adresse (z. B. http://hapi_enterprise:8099)",
+          "token": "Admin-Token",
+          "scan_interval": "Aktualisierungsintervall (Sekunden)",
+          "panel_url": "Panel-Adresse (optional)"
+        },
+        "data_description": {
+          "panel_url": "Adresse, die im Browser für das hAPI-Panel geöffnet wird. Leer lassen, um die API-Adresse mit /ui/ zu verwenden."
+        }
+      }
+    },
+    "error": {
+      "invalid_url": "Gib eine gültige http(s)-URL ein.",
+      "token_too_short": "Das Token ist zu kurz (mindestens 24 Zeichen).",
+      "token_too_long": "Das Token ist zu lang (höchstens 512 Zeichen).",
+      "invalid_scan_interval": "Das Intervall muss zwischen 10 und 86400 Sekunden liegen.",
+      "invalid_auth": "Das Add-on hat das Admin-Token abgelehnt.",
+      "cannot_connect": "Die Admin-API des Add-ons ist nicht erreichbar. Prüfe die URL und ob das Add-on läuft.",
+      "wrong_port": "Das ist der Ingress-Port (8098), den nur der Supervisor nutzen darf. Gib die öffentliche Adresse des Add-ons ein: http://hapi_enterprise:8099",
+      "addon_too_old": "Die Adresse antwortet, aber nicht die Admin-API. Das Add-on ist wahrscheinlich älter als 0.69.96 — aktualisiere es und versuche es erneut."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "visits": {
+        "name": "Besuche"
+      },
+      "downloads": {
+        "name": "Downloads"
+      },
+      "files": {
+        "name": "Dateien"
+      },
+      "portal_count": {
+        "name": "Portale"
+      },
+      "file_bytes": {
+        "name": "Dateispeicher"
+      },
+      "database_bytes": {
+        "name": "Größe der Datenbank"
+      },
+      "telemetry_bytes": {
+        "name": "Größe der Telemetrie"
+      },
+      "unique_visitors": {
+        "name": "Eindeutige Besucher"
+      },
+      "visitors_new_24h": {
+        "name": "Neue Besucher (24 h)"
+      },
+      "download_visitors": {
+        "name": "Besucher mit Download"
+      },
+      "denied_total": {
+        "name": "Abgelehnte Zugriffe"
+      },
+      "admin_logins": {
+        "name": "Admin-Anmeldungen"
+      },
+      "countries_known": {
+        "name": "Besucherländer"
+      },
+      "version": {
+        "name": "Version des Add-ons"
+      },
+      "sync": {
+        "name": "Add-on und Integration passen zusammen",
+        "state": {
+          "ok": "Passend",
+          "mismatch": "Abweichend",
+          "unknown": "Unbekannt"
+        }
+      },
+      "health": {
+        "name": "Zustand",
+        "state": {
+          "ok": "Gesund",
+          "warning": "Warnung",
+          "critical": "Kritisch",
+          "unknown": "Noch nicht gemessen"
+        }
+      },
+      "http_error_rate": {
+        "name": "HTTP-Fehlerrate (5xx)"
+      },
+      "latency_p95": {
+        "name": "Antwortzeit p95"
+      },
+      "download_denial_rate": {
+        "name": "Ablehnungsrate der Downloads"
+      },
+      "recommended_action": {
+        "name": "Empfohlene Prüfung"
+      },
+      "active_portal_sessions": {
+        "name": "Aktive Portal-Sitzungen"
+      },
+      "token_validation_failures": {
+        "name": "Fehlgeschlagene Token-Prüfungen"
+      },
+      "revoked_token_attempts": {
+        "name": "Versuche mit widerrufenem Token"
+      },
+      "cross_portal_denials": {
+        "name": "Portalübergreifende Ablehnungen"
+      },
+      "qr_active": {
+        "name": "Aktive QR-Codes"
+      },
+      "qr_blocked": {
+        "name": "Gesperrte QR-Codes"
+      },
+      "qr_archives": {
+        "name": "Physische Archive"
+      },
+      "locked_files": {
+        "name": "Gesperrte veröffentlichte Dateien"
+      },
+      "integrity_failed": {
+        "name": "Fehlgeschlagene Integritätsprüfungen"
+      }
+    },
+    "binary_sensor": {
+      "mirror_problem": {
+        "name": "Problem mit dem Speicherspiegel"
+      },
+      "api_available": {
+        "name": "Admin-API erreichbar"
+      },
+      "public_gateway_security_alert": {
+        "name": "Sicherheitswarnung des öffentlichen Gateways"
+      }
+    }
+  }
+}
